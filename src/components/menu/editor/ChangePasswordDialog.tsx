@@ -15,7 +15,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Lock } from "lucide-react";
 
-const ChangePasswordDialog = () => {
+interface ChangePasswordDialogProps {
+  children?: React.ReactNode; // Add children prop
+}
+
+const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -60,10 +64,7 @@ const ChangePasswordDialog = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <Lock className="h-4 w-4" />
-{/*           Change Password */}
-        </Button>
+        {children}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

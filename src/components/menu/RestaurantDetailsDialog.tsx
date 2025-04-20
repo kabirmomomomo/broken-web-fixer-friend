@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   Dialog,
@@ -20,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Settings2 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -37,11 +35,13 @@ interface RestaurantDetailsDialogProps {
     closing_time?: string;
   };
   onSave: (details: Partial<RestaurantDetailsDialogProps['restaurant']>) => void;
+  children?: React.ReactNode;
 }
 
 const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
   restaurant,
   onSave,
+  children,
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [formData, setFormData] = React.useState(restaurant);
@@ -161,9 +161,7 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
     return (
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
-          <Button variant="outline" className="gap-2">
-            <Settings2 className="h-4 w-4" />
-          </Button>
+          {children}
         </SheetTrigger>
         <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
           <SheetHeader className="mb-4">
@@ -181,9 +179,7 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <Settings2 className="h-4 w-4" />
-        </Button>
+        {children}
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
