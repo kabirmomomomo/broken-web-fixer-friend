@@ -6,6 +6,11 @@ import { PlusCircle, MinusCircle, ChevronDown, ChevronUp, CircleSlash } from "lu
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface MenuItemProps {
   item: MenuItemType;
@@ -18,7 +23,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
   }
 
   const { addToCart, updateQuantity, cartItems } = useCart();
-  const [expanded, setExpanded] = useState(false);
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<MenuItemVariant | undefined>(
     item.variants && item.variants.length > 0 ? item.variants[0] : undefined
   );
@@ -62,7 +67,8 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
   const hasDetails = (
     item.variants?.length > 0 || 
     (item.old_price && parseFloat(item.old_price) > 0) ||
-    item.weight
+    item.weight ||
+    item.addons?.length > 0
   );
 
   return (
@@ -119,89 +125,78 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
             </div>
           )}
           
-          {item.variants && item.variants.length > 0 && (
-            <div className="mb-4 border rounded-lg p-3 bg-purple-50/30 border-purple-100">
-              <h4 className="text-sm font-medium text-purple-900 mb-2">Available options:</h4>
-              <RadioGroup 
-                value={selectedVariant?.id} 
-                onValueChange={handleVariantChange}
-                className="space-y-2"
-              >
-                {item.variants.map(variant => (
-                  <div key={variant.id} className="flex items-center justify-between hover:bg-purple-100/50 rounded-md p-1 transition-colors">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem 
-                        value={variant.id} 
-                        id={`variant-${variant.id}`} 
-                        className="text-purple-600 border-purple-300 focus:ring-purple-500"
-                      />
-                      <Label htmlFor={`variant-${variant.id}`} className="text-sm text-purple-800">
-                        {variant.name}
-                      </Label>
-                    </div>
-                    <span className="text-sm font-medium text-purple-900">${parseFloat(variant.price).toFixed(2)}</span>
-                  </div>
-                ))}
-              </RadioGroup>
-            </div>
-          )}
-          
-          {hasDetails && !item.variants && (
-            <div className="mb-4">
-              <Button
-                onClick={() => setExpanded(!expanded)}
-                variant="ghost"
-                size="sm"
-                className="text-purple-600 p-0 h-auto flex items-center hover:bg-transparent hover:text-purple-700"
-              >
-                {expanded ? (
-                  <>
-                    <ChevronUp className="h-4 w-4 mr-1" /> Less details
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4 mr-1" /> More details
-                  </>
-                )}
-              </Button>
+          {hasDetails && (
+            <Collapsible open={isOptionsOpen} onOpenChange={setIsOptionsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-purple-600 p-0 h-auto flex items-center hover:bg-transparent hover:text-purple-700 mb-2"
+                >
+                  {isOptionsOpen ? (
+                    <>
+                      <ChevronUp className="h-4 w-4 mr-1" /> Hide options
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4 mr-1" /> View options
+                    </>
+                  )}
+                </Button>
+              </CollapsibleTrigger>
               
-              {expanded && item.variants && item.variants.length > 0 && (
-                <div className="mt-3 pl-2 border-l-2 border-purple-200">
-                  <p className="text-sm font-medium text-gray-700 mb-1">Available options:</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {item.variants.map((variant) => (
-                      <div key={variant.id} className="flex justify-between text-sm">
-                        <span>{variant.name}</span>
-                        <span className="font-medium">${parseFloat(variant.price).toFixed(2)}</span>
+              <CollapsibleContent className="space-y-4">
+                {item.variants && item.variants.length > 0 && (
+                  <div className="border rounded-lg p-3 bg-purple-50/30 border-purple-100">
+                    <h4 className="text-sm font-medium text-purple-900 mb-2">Available options:</h4>
+                    <RadioGroup 
+                      value={selectedVariant?.id} 
+                      onValueChange={handleVariantChange}
+                      className="space-y-2"
+                    >
+                      {item.variants.map(variant => (
+                        <div key={variant.id} className="flex items-center justify-between hover:bg-purple-100/50 rounded-md p-1 transition-colors">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem 
+                              value={variant.id} 
+                              id={`variant-${variant.id}`} 
+                              className="text-purple-600 border-purple-300 focus:ring-purple-500"
+                            />
+                            <Label htmlFor={`variant-${variant.id}`} className="text-sm text-purple-800">
+                              {variant.name}
+                            </Label>
+                          </div>
+                          <span className="text-sm font-medium text-purple-900">${parseFloat(variant.price).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                )}
+                
+                {item.addons && item.addons.length > 0 && (
+                  <div className="pl-2 border-l-2 border-purple-200">
+                    {item.addons.map(addon => (
+                      <div key={addon.id} className="mb-3">
+                        <p className="text-sm font-medium text-gray-700 mb-1">{addon.title}:</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {addon.options.map(option => (
+                            <div key={option.id} className="flex justify-between text-sm">
+                              <span>{option.name}</span>
+                              <span className="font-medium">
+                                {parseFloat(option.price) > 0 ? `+$${parseFloat(option.price).toFixed(2)}` : 'Free'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
           )}
           
-          {item.addons && item.addons.length > 0 && expanded && (
-            <div className="mt-3 pl-2 border-l-2 border-purple-200">
-              {item.addons.map(addon => (
-                <div key={addon.id} className="mb-3">
-                  <p className="text-sm font-medium text-gray-700 mb-1">{addon.title}:</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {addon.options.map(option => (
-                      <div key={option.id} className="flex justify-between text-sm">
-                        <span>{option.name}</span>
-                        <span className="font-medium">
-                          {parseFloat(option.price) > 0 ? `+$${parseFloat(option.price).toFixed(2)}` : 'Free'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          
-          <div className="flex justify-end items-center">
+          <div className="flex justify-end items-center mt-4">
             {item.is_available ? (
               itemQuantity > 0 ? (
                 <div className="flex items-center gap-2 bg-purple-50 p-1 rounded-full shadow-sm">
