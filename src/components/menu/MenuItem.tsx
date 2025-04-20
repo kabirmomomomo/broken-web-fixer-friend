@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { MenuItem as MenuItemType, MenuItemVariant } from "@/types/menu";
@@ -61,7 +60,6 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
     setSelectedVariant(variant);
   };
 
-  // The item can show options if it has variants/addons
   const hasOptions = !!(item.variants?.length > 0 || item.addons?.length > 0);
 
   return (
@@ -76,12 +74,12 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
         !item.is_available && "opacity-60"
       )}
     >
-      <div className={cn("flex gap-2", isMobile ? "items-center" : "items-start")}>
+      <div className={cn("flex flex-col items-center gap-2 w-full", isMobile ? "" : "flex-row items-start")}>
         {item.image_url && (
           <div
             className={cn(
-              "overflow-hidden flex-shrink-0 rounded-md border border-purple-100 bg-gray-100",
-              isMobile ? "w-16 h-16" : "w-24 h-24"
+              "overflow-hidden rounded-md border border-purple-100 bg-gray-100 mx-auto",
+              isMobile ? "w-14 h-14 mb-1" : "w-20 h-20 mr-3 mb-0"
             )}
           >
             <img
@@ -95,69 +93,79 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
           </div>
         )}
 
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div className={cn(
+          "flex-1 min-w-0 flex flex-col w-full",
+          isMobile ? "items-center text-center" : "items-start text-left"
+        )}>
           <div className={cn(
-            "flex justify-between items-center gap-2 mb-[2px]",
-            isMobile ? "flex-row" : "flex-row"
+            "flex items-center justify-between w-full gap-2",
+            isMobile ? "flex-col items-center gap-0 mb-1" : ""
           )}>
-            <div className="min-w-0 flex flex-col">
-              <h3 className={cn(
-                "font-semibold text-purple-900 truncate leading-tight",
-                isMobile ? "text-sm" : "text-xl"
-              )}>
-                {item.name}
-              </h3>
-              {item.weight && (
-                <span className={cn(
-                  "text-[11px] text-gray-500 mt-0.5",
-                  isMobile ? "" : ""
-                )}>{item.weight}</span>
-              )}
-            </div>
-            <div className="flex flex-col items-end gap-0 flex-shrink-0">
+            <h3 className={cn(
+              "font-semibold text-purple-900 truncate leading-tight",
+              isMobile ? "text-xs w-full mb-0 px-1" : "text-lg"
+            )}>
+              {item.name}
+            </h3>
+            <div className={cn(
+              "flex flex-col items-end gap-0 flex-shrink-0",
+              isMobile ? "items-center" : ""
+            )}>
               {item.old_price && parseFloat(item.old_price) > 0 && (
-                <span className="text-[11px] font-medium line-through text-gray-400">
+                <span className="text-[10px] font-medium line-through text-gray-400">
                   ${parseFloat(item.old_price).toFixed(2)}
                 </span>
               )}
               <span className={cn(
                 "font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-2 py-0.5 rounded-full shadow-sm tabular-nums",
-                isMobile ? "text-xs min-w-[54px] text-center py-0.5 px-2" : "text-base px-2"
+                isMobile ? "text-xs min-w-[48px] text-center px-2" : "text-base px-2"
               )}>
                 ${parseFloat(effectivePrice).toFixed(2)}
               </span>
             </div>
           </div>
 
-          <p className={cn(
-            "text-gray-600 mb-1 truncate break-words",
-            isMobile
-              ? "text-[12px] font-normal leading-snug line-clamp-2"
-              : "text-sm font-normal leading-relaxed line-clamp-2"
-          )}>
-            {item.description}
-          </p>
+          {item.description && (
+            <p className={cn(
+              "text-gray-500 mt-1 mb-1 truncate break-words",
+              isMobile
+                ? "text-[10px] leading-tight font-normal line-clamp-2 px-1"
+                : "text-xs font-normal leading-relaxed line-clamp-2"
+            )}>
+              {item.description}
+            </p>
+          )}
 
           {!item.is_available && (
-            <div className="mb-1 flex items-center gap-1 text-red-500">
-              <CircleSlash size={13} />
-              <span className="text-[11px] font-medium">Out of stock</span>
+            <div className="mb-1 flex items-center gap-1 text-red-500 justify-center">
+              <CircleSlash size={12} />
+              <span className="text-[10px] font-medium">Out of stock</span>
             </div>
           )}
 
-          {/* SHOW OPTIONS DIRECTLY if present */}
           {hasOptions && (
-            <div className="space-y-2 mb-1">
+            <div className={cn("space-y-2 mb-1 w-full", isMobile ? "px-1" : "")}>
               {item.variants && item.variants.length > 0 && (
-                <div className="border rounded-md p-1.5 bg-purple-50/40 border-purple-100">
-                  <span className="text-xs font-medium text-purple-900 mb-1 block">Options:</span>
+                <div className={cn(
+                  "border rounded-md bg-purple-50/40 border-purple-100 w-full mx-auto",
+                  isMobile ? "p-0.5" : "p-1.5"
+                )}>
+                  <span className={cn(
+                      "text-xs font-medium text-purple-900 mb-1 block",
+                      isMobile ? "mb-0 px-1" : ""
+                    )}>
+                    Options:
+                  </span>
                   <RadioGroup
                     value={selectedVariant?.id}
                     onValueChange={handleVariantChange}
-                    className="space-y-1"
+                    className={cn("space-y-1", isMobile ? "gap-0" : "")}
                   >
                     {item.variants.map(variant => (
-                      <div key={variant.id} className="flex items-center justify-between hover:bg-purple-100/60 rounded-md px-1 py-0.5 transition-colors">
+                      <div key={variant.id} className={cn(
+                        "flex items-center justify-between hover:bg-purple-100/60 rounded-md transition-colors",
+                        isMobile ? "px-1 py-0.5" : "px-1 py-0.5"
+                      )}>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem
                             value={variant.id}
@@ -176,11 +184,17 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
               )}
 
               {item.addons && item.addons.length > 0 && (
-                <div className="pl-2 border-l-2 border-purple-200">
+                <div className={cn(
+                  "border-l-2 border-purple-200 w-full",
+                  isMobile ? "pl-1" : "pl-2"
+                )}>
                   {item.addons.map(addon => (
                     <div key={addon.id} className="mb-1">
                       <span className="text-xs font-medium text-gray-700 mb-0.5 block">{addon.title}:</span>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className={cn(
+                        "grid gap-2",
+                        isMobile ? "grid-cols-1" : "grid-cols-2"
+                      )}>
                         {addon.options.map(option => (
                           <div key={option.id} className="flex justify-between text-xs">
                             <span>{option.name}</span>
@@ -197,25 +211,30 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
             </div>
           )}
 
-          {/* Buttons row */}
-          <div className="flex w-full justify-end items-center mt-1">
+          <div className={cn(
+            "flex w-full justify-end items-center mt-1",
+            isMobile ? "justify-center gap-2" : ""
+          )}>
             {item.is_available ? (
               itemQuantity > 0 ? (
-                <div className="flex items-center gap-1 bg-purple-50 p-0.5 rounded-full shadow-sm">
+                <div className={cn(
+                  "flex items-center gap-1 bg-purple-50 rounded-full shadow-sm",
+                  isMobile ? "p-[2px]" : "p-0.5"
+                )}>
                   <Button
                     onClick={decrementQuantity}
                     size="sm"
                     className={cn(
                       "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-full flex items-center justify-center shadow-sm transition-transform hover:scale-105",
-                      isMobile ? "h-6 w-6 p-0 min-w-0" : "h-8 w-8 p-0"
+                      isMobile ? "h-6 w-6 p-0 min-w-0" : "h-7 w-7 p-0"
                     )}
                   >
-                    <MinusCircle size={isMobile ? 14 : 16} />
+                    <MinusCircle size={isMobile ? 13 : 15} />
                     <span className="sr-only">Decrease quantity</span>
                   </Button>
                   <span className={cn(
                     "font-medium text-center text-purple-900",
-                    isMobile ? "text-sm w-7" : "text-lg w-8"
+                    isMobile ? "text-xs w-5" : "text-base w-8"
                   )}>
                     {itemQuantity}
                   </span>
@@ -224,10 +243,10 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                     size="sm"
                     className={cn(
                       "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-full flex items-center justify-center shadow-sm transition-transform hover:scale-105",
-                      isMobile ? "h-6 w-6 p-0 min-w-0" : "h-8 w-8 p-0"
+                      isMobile ? "h-6 w-6 p-0 min-w-0" : "h-7 w-7 p-0"
                     )}
                   >
-                    <PlusCircle size={isMobile ? 14 : 16} />
+                    <PlusCircle size={isMobile ? 13 : 15} />
                     <span className="sr-only">Increase quantity</span>
                   </Button>
                 </div>
@@ -237,10 +256,10 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                   size="sm"
                   className={cn(
                     "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-full flex items-center gap-1 shadow-sm hover:scale-105 transition-transform",
-                    isMobile ? "text-xs px-2 h-7 py-1 min-w-0" : "text-sm px-4 py-1"
+                    isMobile ? "text-xs px-2 h-6 py-1 min-w-0" : "text-sm px-4 py-1"
                   )}
                 >
-                  <PlusCircle size={isMobile ? 14 : 16} />
+                  <PlusCircle size={isMobile ? 13 : 15} />
                   <span className={isMobile ? "hidden sm:inline" : ""}>Add to cart</span>
                 </Button>
               )
@@ -254,7 +273,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                   isMobile ? "text-xs" : "text-sm"
                 )}
               >
-                <CircleSlash size={isMobile ? 14 : 16} className="mr-1" />
+                <CircleSlash size={isMobile ? 13 : 15} className="mr-1" />
                 Out of stock
               </Button>
             )}
