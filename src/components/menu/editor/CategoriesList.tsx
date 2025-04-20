@@ -33,23 +33,23 @@ const CategoriesList: React.FC<CategoriesListProps> = ({
   addCategory
 }) => {
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Menu Categories</h2>
-        <Button onClick={addCategory} variant="outline" className="gap-2">
-          <PlusCircle className="h-4 w-4" />
-          Add Category
+    <div className="space-y-3">
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-lg font-semibold">Menu Categories</h2>
+        <Button onClick={addCategory} variant="outline" size="sm" className="h-8 px-3">
+          <PlusCircle className="h-4 w-4 mr-2" />
+          <span className="hidden md:inline">Add Category</span>
         </Button>
       </div>
 
       {categories.length === 0 ? (
-        <div className="text-center py-10 border rounded-lg border-dashed">
-          <p className="text-muted-foreground">
+        <div className="text-center py-8 border rounded-lg border-dashed">
+          <p className="text-sm text-muted-foreground">
             No categories yet. Add your first category to get started.
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {categories.map((category, categoryIndex) => (
             <CategoryItem
               key={category.id}

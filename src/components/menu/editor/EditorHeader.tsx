@@ -1,8 +1,9 @@
+
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import QRCode from "react-qr-code";
-import { QrCode, Eye, Save, LogOut } from "lucide-react";
+import { QrCode, Eye, Save, LogOut, Settings, KeyRound } from "lucide-react";
 import { RestaurantUI } from "@/services/menuService";
 import { useNavigate } from "react-router-dom";
 import RestaurantDetailsDialog from "@/components/menu/RestaurantDetailsDialog";
@@ -27,28 +28,46 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
   const qrCodeValue = `${window.location.origin}/menu-preview/${restaurant.id}`;
 
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 md:gap-0">
+    <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row justify-between items-start md:items-center mb-4 md:mb-8">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Menu Editor</h1>
-        <p className="text-sm md:text-base text-muted-foreground">
+        <h1 className="text-xl md:text-2xl font-bold">Menu Editor</h1>
+        <p className="text-xs md:text-sm text-muted-foreground">
           Create and edit your restaurant menu
         </p>
       </div>
-      <div className="flex flex-wrap gap-2 md:gap-3 w-full md:w-auto">
+      <div className="flex flex-wrap gap-2 w-full md:w-auto">
         <RestaurantDetailsDialog 
           restaurant={restaurant}
           onSave={handleSaveRestaurantDetails}
-        />
-        <ChangePasswordDialog />
-        <Button variant="outline" className="gap-2" onClick={signOut}>
+        >
+          <Button variant="outline" size="sm" className="h-8 px-2 md:px-3">
+            <Settings className="h-4 w-4" />
+            <span className="hidden md:inline ml-2">Settings</span>
+          </Button>
+        </RestaurantDetailsDialog>
+        
+        <ChangePasswordDialog>
+          <Button variant="outline" size="sm" className="h-8 px-2 md:px-3">
+            <KeyRound className="h-4 w-4" />
+            <span className="hidden md:inline ml-2">Password</span>
+          </Button>
+        </ChangePasswordDialog>
+
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="h-8 px-2 md:px-3"
+          onClick={signOut}
+        >
           <LogOut className="h-4 w-4" />
-          <span className="hidden md:inline">Sign Out</span>
+          <span className="hidden md:inline ml-2">Sign Out</span>
         </Button>
+
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" size="sm" className="h-8 px-2 md:px-3">
               <QrCode className="h-4 w-4" />
-              <span className="hidden md:inline">QR Code</span>
+              <span className="hidden md:inline ml-2">QR Code</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
@@ -72,21 +91,25 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
             </div>
           </DialogContent>
         </Dialog>
+
         <Button 
-          variant="outline" 
-          className="gap-2"
+          variant="outline"
+          size="sm"
+          className="h-8 px-2 md:px-3"
           onClick={() => navigate(`/menu-preview/${restaurant.id}`, { state: { from: 'menu-editor' } })}
         >
           <Eye className="h-4 w-4" />
-          <span className="hidden md:inline">Preview</span>
+          <span className="hidden md:inline ml-2">Preview</span>
         </Button>
+
         <Button 
-          className="gap-2"
+          size="sm"
+          className="h-8 px-3 md:px-4"
           onClick={handleSaveMenu}
           disabled={isSaving}
         >
           <Save className="h-4 w-4" />
-          {isSaving ? "Saving..." : "Save"}
+          <span className="hidden md:inline ml-2">{isSaving ? "Saving..." : "Save"}</span>
         </Button>
       </div>
     </div>

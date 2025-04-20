@@ -624,7 +624,7 @@ const MenuEditor = () => {
   };
 
   return (
-    <div className="container mx-auto py-10 px-4 max-w-7xl">
+    <div className="container mx-auto py-4 md:py-8 px-3 md:px-4 max-w-7xl">
       <EditorHeader 
         restaurant={restaurant}
         handleSaveMenu={handleSaveMenu}
@@ -633,11 +633,11 @@ const MenuEditor = () => {
         isSaving={saveMenuMutation.isPending}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+        <div className="space-y-4">
           <RestaurantForm restaurant={restaurant} setRestaurant={setRestaurant} />
 
-          <Separator />
+          <Separator className="my-4" />
 
           <CategoriesList
             categories={restaurant.categories}
