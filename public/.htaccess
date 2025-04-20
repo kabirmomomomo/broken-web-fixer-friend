@@ -1,0 +1,10 @@
+
+# Enable rewrite engine
+RewriteEngine On
+
+# If the requested resource doesn't exist as a file
+RewriteCond %{REQUEST_FILENAME} !-f
+# And if it doesn't exist as a directory
+RewriteCond %{REQUEST_FILENAME} !-d
+# Then rewrite all requests to the root index.html file
+RewriteRule ^(.*)$ index.html [QSA,L]
