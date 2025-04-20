@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { MenuItem as MenuItemType, MenuItemVariant } from "@/types/menu";
@@ -78,18 +77,19 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
     <div 
       key={item.id} 
       className={cn(
-        "border-b pb-6 last:border-b-0 transition-all duration-300 rounded-lg p-4",
+        "border-b pb-4 last:border-b-0 transition-all duration-300 rounded-lg",
+        isMobile ? "p-3" : "p-4",
         "transform hover:scale-[1.02] hover:shadow-md hover:bg-gradient-to-r hover:from-white hover:to-purple-50",
         "animate-fade-in",
         index % 2 === 0 ? "bg-gradient-to-r from-purple-50/40 to-white" : "bg-white",
         !item.is_available && "opacity-60"
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2">
         {item.image_url && (
           <div className={cn(
             "overflow-hidden flex-shrink-0 rounded-md",
-            isMobile ? "w-20 h-20" : "w-24 h-24"
+            isMobile ? "w-16 h-16" : "w-24 h-24"
           )}>
             <img 
               src={item.image_url} 
@@ -102,28 +102,28 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
           </div>
         )}
         
-        <div className="flex-1">
-          <div className="flex justify-between items-baseline mb-2">
-            <div>
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start gap-2 mb-1">
+            <div className="min-w-0">
               <h3 className={cn(
-                "font-semibold text-purple-900",
-                isMobile ? "text-lg" : "text-xl"
+                "font-semibold text-purple-900 truncate",
+                isMobile ? "text-base" : "text-xl"
               )}>
                 {item.name}
               </h3>
               {item.weight && (
-                <p className="text-sm text-gray-500">{item.weight}</p>
+                <p className="text-xs text-gray-500">{item.weight}</p>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
               {item.old_price && parseFloat(item.old_price) > 0 && (
-                <span className="text-sm font-medium line-through text-gray-400">
+                <span className="text-xs font-medium line-through text-gray-400">
                   ${parseFloat(item.old_price).toFixed(2)}
                 </span>
               )}
               <p className={cn(
-                "font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-1 rounded-full shadow-sm",
-                isMobile ? "text-base" : "text-lg"
+                "font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-2 py-0.5 rounded-full shadow-sm",
+                isMobile ? "text-sm" : "text-base"
               )}>
                 ${parseFloat(effectivePrice).toFixed(2)}
               </p>
@@ -131,16 +131,16 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
           </div>
           
           <p className={cn(
-            "text-gray-600 leading-relaxed mb-3",
-            isMobile ? "text-sm" : "text-base"
+            "text-gray-600 leading-relaxed mb-2 line-clamp-2",
+            isMobile ? "text-xs" : "text-sm"
           )}>
             {item.description}
           </p>
           
           {!item.is_available && (
-            <div className="mb-3 flex items-center gap-2 text-red-500">
-              <CircleSlash size={16} />
-              <span className="text-sm font-medium">Out of stock</span>
+            <div className="mb-2 flex items-center gap-1 text-red-500">
+              <CircleSlash size={14} />
+              <span className="text-xs font-medium">Out of stock</span>
             </div>
           )}
           
@@ -150,28 +150,31 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-purple-600 p-0 h-auto flex items-center hover:bg-transparent hover:text-purple-700 mb-2"
+                  className={cn(
+                    "text-purple-600 p-0 h-auto flex items-center hover:bg-transparent hover:text-purple-700 mb-2",
+                    isMobile ? "text-xs" : "text-sm"
+                  )}
                 >
                   {isOptionsOpen ? (
                     <>
-                      <ChevronUp className="h-4 w-4 mr-1" /> Hide options
+                      <ChevronUp className="h-3 w-3 mr-1" /> Hide options
                     </>
                   ) : (
                     <>
-                      <ChevronDown className="h-4 w-4 mr-1" /> View options
+                      <ChevronDown className="h-3 w-3 mr-1" /> View options
                     </>
                   )}
                 </Button>
               </CollapsibleTrigger>
               
-              <CollapsibleContent className="space-y-4">
+              <CollapsibleContent className="space-y-3">
                 {item.variants && item.variants.length > 0 && (
-                  <div className="border rounded-lg p-3 bg-purple-50/30 border-purple-100">
-                    <h4 className="text-sm font-medium text-purple-900 mb-2">Available options:</h4>
+                  <div className="border rounded-lg p-2 bg-purple-50/30 border-purple-100">
+                    <h4 className="text-xs font-medium text-purple-900 mb-2">Available options:</h4>
                     <RadioGroup 
                       value={selectedVariant?.id} 
                       onValueChange={handleVariantChange}
-                      className="space-y-2"
+                      className="space-y-1"
                     >
                       {item.variants.map(variant => (
                         <div key={variant.id} className="flex items-center justify-between hover:bg-purple-100/50 rounded-md p-1 transition-colors">
@@ -179,13 +182,13 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                             <RadioGroupItem 
                               value={variant.id} 
                               id={`variant-${variant.id}`} 
-                              className="text-purple-600 border-purple-300 focus:ring-purple-500"
+                              className="text-purple-600 border-purple-300 focus:ring-purple-500 h-3 w-3"
                             />
-                            <Label htmlFor={`variant-${variant.id}`} className="text-sm text-purple-800">
+                            <Label htmlFor={`variant-${variant.id}`} className="text-xs text-purple-800">
                               {variant.name}
                             </Label>
                           </div>
-                          <span className="text-sm font-medium text-purple-900">${parseFloat(variant.price).toFixed(2)}</span>
+                          <span className="text-xs font-medium text-purple-900">${parseFloat(variant.price).toFixed(2)}</span>
                         </div>
                       ))}
                     </RadioGroup>
@@ -195,11 +198,11 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                 {item.addons && item.addons.length > 0 && (
                   <div className="pl-2 border-l-2 border-purple-200">
                     {item.addons.map(addon => (
-                      <div key={addon.id} className="mb-3">
-                        <p className="text-sm font-medium text-gray-700 mb-1">{addon.title}:</p>
+                      <div key={addon.id} className="mb-2">
+                        <p className="text-xs font-medium text-gray-700 mb-1">{addon.title}:</p>
                         <div className="grid grid-cols-2 gap-2">
                           {addon.options.map(option => (
-                            <div key={option.id} className="flex justify-between text-sm">
+                            <div key={option.id} className="flex justify-between text-xs">
                               <span>{option.name}</span>
                               <span className="font-medium">
                                 {parseFloat(option.price) > 0 ? `+$${parseFloat(option.price).toFixed(2)}` : 'Free'}
@@ -215,27 +218,38 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
             </Collapsible>
           )}
           
-          <div className="flex justify-end items-center mt-4">
+          <div className="flex justify-end items-center mt-2">
             {item.is_available ? (
               itemQuantity > 0 ? (
-                <div className="flex items-center gap-2 bg-purple-50 p-1 rounded-full shadow-sm">
+                <div className="flex items-center gap-1 bg-purple-50 p-0.5 rounded-full shadow-sm">
                   <Button 
                     onClick={decrementQuantity}
                     size="sm"
-                    className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-full h-8 w-8 p-0 flex items-center justify-center shadow-sm transform transition-transform hover:scale-105"
+                    className={cn(
+                      "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-full flex items-center justify-center shadow-sm transform transition-transform hover:scale-105",
+                      isMobile ? "h-6 w-6 p-0" : "h-8 w-8 p-0"
+                    )}
                   >
-                    <MinusCircle size={16} />
+                    <MinusCircle size={isMobile ? 14 : 16} />
                     <span className="sr-only">Decrease quantity</span>
                   </Button>
                   
-                  <span className="font-medium text-lg w-8 text-center text-purple-900">{itemQuantity}</span>
+                  <span className={cn(
+                    "font-medium text-center text-purple-900",
+                    isMobile ? "text-sm w-6" : "text-lg w-8"
+                  )}>
+                    {itemQuantity}
+                  </span>
                   
                   <Button 
                     onClick={incrementQuantity}
                     size="sm"
-                    className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-full h-8 w-8 p-0 flex items-center justify-center shadow-sm transform transition-transform hover:scale-105"
+                    className={cn(
+                      "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-full flex items-center justify-center shadow-sm transform transition-transform hover:scale-105",
+                      isMobile ? "h-6 w-6 p-0" : "h-8 w-8 p-0"
+                    )}
                   >
-                    <PlusCircle size={16} />
+                    <PlusCircle size={isMobile ? 14 : 16} />
                     <span className="sr-only">Increase quantity</span>
                   </Button>
                 </div>
@@ -243,9 +257,12 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                 <Button 
                   onClick={incrementQuantity}
                   size="sm"
-                  className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-full px-4 py-1 text-sm flex items-center gap-1 transform transition-all duration-200 hover:scale-105 shadow-sm"
+                  className={cn(
+                    "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-full flex items-center gap-1 transform transition-all duration-200 hover:scale-105 shadow-sm",
+                    isMobile ? "text-xs px-3 py-1 h-7" : "text-sm px-4 py-1"
+                  )}
                 >
-                  <PlusCircle size={16} />
+                  <PlusCircle size={isMobile ? 14 : 16} />
                   Add to cart
                 </Button>
               )
@@ -254,9 +271,12 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                 disabled
                 size="sm"
                 variant="ghost"
-                className="text-red-500 cursor-not-allowed"
+                className={cn(
+                  "text-red-500 cursor-not-allowed",
+                  isMobile ? "text-xs" : "text-sm"
+                )}
               >
-                <CircleSlash size={16} className="mr-1" />
+                <CircleSlash size={isMobile ? 14 : 16} className="mr-1" />
                 Out of stock
               </Button>
             )}
