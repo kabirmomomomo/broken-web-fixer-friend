@@ -17,12 +17,22 @@ import {
   MenuItemAddonUI,
   MenuAddonOptionUI
 } from "@/services/menuService";
+import { useIsMobile } from "@/hooks/use-mobile";
 import RestaurantForm from "@/components/menu/editor/RestaurantForm";
 import CategoriesList from "@/components/menu/editor/CategoriesList";
 import MenuItemEditor from "@/components/menu/editor/MenuItemEditor";
 import EmptyItemEditor from "@/components/menu/editor/EmptyItemEditor";
 import EditorHeader from "@/components/menu/editor/EditorHeader";
 import LoadingAnimation from "@/components/LoadingAnimation";
+import {
+  Dialog,
+  DialogContent,
+  DialogPortal,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+} from "@/components/ui/sheet";
 
 const MenuEditor = () => {
   const navigate = useNavigate();
@@ -59,6 +69,8 @@ const MenuEditor = () => {
       toast.error("Failed to save menu. Please try again.");
     },
   });
+
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!isLoadingRestaurant) {
@@ -586,6 +598,31 @@ const MenuEditor = () => {
     }
   }
 
+  const renderItemEditor = () => {
+    if (!activeItem || !activeCategoryId) return null;
+
+    return (
+      <MenuItemEditor 
+        activeItem={activeItem}
+        activeCategoryId={activeCategoryId}
+        updateMenuItem={updateMenuItem}
+        addVariant={addVariant}
+        updateVariant={updateVariant}
+        deleteVariant={deleteVariant}
+        addAddon={addAddon}
+        updateAddon={updateAddon}
+        deleteAddon={deleteAddon}
+        addAddonOption={addAddonOption}
+        updateAddonOption={updateAddonOption}
+        deleteAddonOption={deleteAddonOption}
+        handleImageUpload={handleImageUpload}
+        handleSaveMenu={handleSaveMenu}
+        setActiveItemId={setActiveItemId}
+        isSaving={saveMenuMutation.isPending}
+      />
+    );
+  };
+
   return (
     <div className="container mx-auto py-10 px-4 max-w-7xl">
       <EditorHeader 
@@ -596,8 +633,8 @@ const MenuEditor = () => {
         isSaving={saveMenuMutation.isPending}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-1 space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-6">
           <RestaurantForm restaurant={restaurant} setRestaurant={setRestaurant} />
 
           <Separator />
@@ -617,27 +654,24 @@ const MenuEditor = () => {
           />
         </div>
 
-        <div className="md:col-span-2">
-          {activeItem && activeCategoryId ? (
-            <MenuItemEditor 
-              activeItem={activeItem}
-              activeCategoryId={activeCategoryId}
-              updateMenuItem={updateMenuItem}
-              addVariant={addVariant}
-              updateVariant={updateVariant}
-              deleteVariant={deleteVariant}
-              addAddon={addAddon}
-              updateAddon={updateAddon}
-              deleteAddon={deleteAddon}
-              addAddonOption={addAddonOption}
-              updateAddonOption={updateAddonOption}
-              deleteAddonOption={deleteAddonOption}
-              handleImageUpload={handleImageUpload}
-              handleSaveMenu={handleSaveMenu}
-              setActiveItemId={setActiveItemId}
-              isSaving={saveMenuMutation.isPending}
-            />
+        <div>
+          {isMobile ? (
+            <Sheet open={!!activeItemId} onOpenChange={(open) => !open && setActiveItemId(null)}>
+              <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
+                {renderItemEditor()}
+              </SheetContent>
+            </Sheet>
           ) : (
+            <Dialog open={!!activeItemId} onOpenChange={(open) => !open && setActiveItemId(null)}>
+              <DialogPortal>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  {renderItemEditor()}
+                </DialogContent>
+              </DialogPortal>
+            </Dialog>
+          )}
+
+          {!activeItemId && (
             <EmptyItemEditor 
               hasCategories={restaurant.categories.length > 0}
               addCategory={addCategory}
