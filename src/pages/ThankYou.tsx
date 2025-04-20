@@ -12,16 +12,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Player } from "@lottiefiles/react-lottie-player";
 import { QrCode, ArrowLeft } from "lucide-react";
 
-// Replace this with your preferred cute/cartoony image URL
+// Lottie links provided by user
+const LOTTIE_THANK_YOU_1 = "https://lottie.host/b7660d056f5df29a85a6de31badfbc00/Thank-You-hUky7L46YA.json";
+const LOTTIE_THANK_YOU_2 = "https://lottie.host/6f7ff7b2434b38b3b6b39a1a3e986f19/Thank-You-SUGYQK6Ujf.json";
+
 const CAT_IMAGE = "https://images.unsplash.com/photo-1535268647677-300dbf3d78d1?auto=format&fit=crop&w=650&q=80";
-const THANK_YOU_LOTTIE =
-  "https://lottie.host/17210db8-01e2-44bb-b1de-008a9ae1b1a7/F2FM4daGdS.json";
-const VISIT_AGAIN_LOTTIE =
-  "https://lottie.host/d98c9aee-5baf-4e28-b36a-dbbea111d00b/Qp3gzaV3vJ.json"; // animated "visit again" text (example)
 
 const ThankYou = () => {
   const { clearCart } = useCart();
-  const { orders } = useOrders();
   const { menuId } = useParams();
   const navigate = useNavigate();
 
@@ -57,55 +55,61 @@ const ThankYou = () => {
   }, [clearCart]);
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center relative overflow-hidden px-4 py-6 bg-gradient-to-br from-pink-50 via-yellow-50 to-purple-100 font-sans">
+    <div className="relative min-h-screen flex flex-col justify-center items-center overflow-hidden px-4 py-6 bg-gradient-to-br from-pink-50 via-yellow-50 to-purple-100 font-sans">
       {/* Animated Gradient Overlay */}
       <div
-        className="absolute inset-0 z-0"
+        className="absolute inset-0 z-0 pointer-events-none"
         aria-hidden="true"
       >
         <div className="absolute left-[-5rem] top-[-7rem] w-[25rem] h-[22rem] rounded-full bg-purple-200/30 blur-2xl animate-float" />
         <div className="absolute right-[-4rem] bottom-[-7rem] w-[23rem] h-[27rem] rounded-full bg-yellow-200/30 blur-3xl animate-float-slow" />
         <div className="absolute left-1/2 top-20 w-[22rem] h-[13rem] -translate-x-1/2 bg-gradient-to-br from-yellow-100/40 to-pink-200/50 rounded-full blur-2xl animate-pulse" />
       </div>
-      {/* Floating Cat Mascot */}
+
+      {/* Lottie animations SECTION */}
+      <div className="flex flex-col gap-0 items-center mt-2 z-30">
+        {/* Main "Thank You" Lottie Animations */}
+        <Player
+          autoplay
+          loop
+          src={LOTTIE_THANK_YOU_1}
+          style={{ height: 140, width: 240, pointerEvents: "none" }}
+          className="mb-[-1.5rem] animate-fade-in"
+          keepLastFrame
+        />
+        <Player
+          autoplay
+          loop
+          src={LOTTIE_THANK_YOU_2}
+          style={{ height: 120, width: 200, pointerEvents: "none" }}
+          className="animate-fade-in"
+          keepLastFrame
+        />
+      </div>
+      {/* Cat Mascot - with motion */}
       <img
         src={CAT_IMAGE}
         alt="Cute cartoon cat"
-        className="absolute left-8 sm:left-20 bottom-12 w-36 h-36 object-cover rounded-full border-8 border-white shadow-2xl z-20 animate-[float_3s_ease-in-out_infinite]"
+        className="absolute left-8 sm:left-20 bottom-16 lg:bottom-20 w-36 h-36 object-cover rounded-full border-8 border-white shadow-2xl z-40 animate-[float_3s_ease-in-out_infinite]"
         style={{ animationDelay: "1s" }}
       />
+
       {/* Main Card */}
-      <Card className="w-full max-w-lg z-30 shadow-2xl glass-effect border-none py-4">
+      <Card className="w-full max-w-lg z-30 shadow-2xl glass-effect border-none py-2 mt-2 animate-scale-in">
         <CardHeader className="pb-2">
-          <div className="flex flex-col justify-center items-center gap-1">
-            {/* Lottie Thank You Animation */}
-            <Player
-              autoplay
-              loop
-              src={THANK_YOU_LOTTIE}
-              style={{ height: "130px", width: "130px" }}
-            />
-            <CardTitle className="text-4xl text-center mb-0 mt-2 font-extrabold bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent tracking-tight drop-shadow-lg">
+          <div className="flex flex-col justify-center items-center gap-2">
+            <CardTitle className="text-4xl text-center mb-0 mt-4 font-extrabold bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent tracking-tight drop-shadow-lg">
               Thank You!
             </CardTitle>
           </div>
         </CardHeader>
         <CardContent>
-          {/* Visit Again Animation */}
-          <div className="flex justify-center mt-1 mb-2">
-            <Player
-              autoplay
-              loop
-              src={VISIT_AGAIN_LOTTIE}
-              style={{ height: "62px", width: "220px" }}
-            />
-          </div>
           <p className="text-lg font-medium text-center text-gray-700 mb-2">
             Your order was <span className="text-purple-600 font-semibold">successful</span>.<br />
             <span className="text-base text-muted-foreground">We appreciate your visit!</span>
           </p>
           {/* Action Buttons */}
-          <div className="flex flex-col gap-3 mt-6 mb-2 items-center w-full">
+          <div className="flex flex-col gap-3 mt-6 mb-4 items-center w-full">
             {/* QR Code CTA */}
             <Button
               variant="default"
@@ -113,9 +117,9 @@ const ThankYou = () => {
               onClick={() => setShowQrDialog(true)}
             >
               <QrCode className="w-6 h-6" />
-              Scan Menu QR Again
+              Menu Preview QR
             </Button>
-            {/* Back to Menu */}
+            {/* Back to Menu Button */}
             <Button
               variant="outline"
               className="w-full max-w-xs gap-2 text-lg py-4 border-purple-200 hover:bg-purple-50 shadow font-semibold"
@@ -127,7 +131,7 @@ const ThankYou = () => {
           </div>
         </CardContent>
       </Card>
-      {/* Lively QR Code Dialog */}
+      {/* QR Code Dialog */}
       {showQrDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl py-8 px-5 max-w-sm mx-auto relative animate-fade-in border-2 border-violet-100">
