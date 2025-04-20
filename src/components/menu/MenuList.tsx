@@ -2,6 +2,8 @@
 import React from "react";
 import MenuCategory from "./MenuCategory";
 import { MenuCategory as MenuCategoryType } from "@/types/menu";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 interface MenuListProps {
   categories: MenuCategoryType[];
@@ -16,6 +18,8 @@ const MenuList: React.FC<MenuListProps> = ({
   toggleCategory,
   searchQuery = "" 
 }) => {
+  const isMobile = useIsMobile();
+  
   // Filter categories and items based on search query and visibility
   const filteredCategories = categories.map(category => {
     // First filter by visibility, then by search query
@@ -55,7 +59,10 @@ const MenuList: React.FC<MenuListProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className={cn(
+      "space-y-6",
+      isMobile ? "px-2" : ""
+    )}>
       {filteredCategories.map((category, categoryIndex) => (
         <MenuCategory
           key={category.id}

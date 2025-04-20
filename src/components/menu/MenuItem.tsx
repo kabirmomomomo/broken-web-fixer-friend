@@ -12,6 +12,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MenuItemProps {
   item: MenuItemType;
@@ -22,7 +23,8 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
   if (item.is_visible === false) {
     return null;
   }
-
+  
+  const isMobile = useIsMobile();
   const { addToCart, updateQuantity, cartItems } = useCart();
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<MenuItemVariant | undefined>(
@@ -83,9 +85,12 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
         !item.is_available && "opacity-60"
       )}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3">
         {item.image_url && (
-          <div className="w-24 h-24 rounded-md overflow-hidden flex-shrink-0 hidden sm:block">
+          <div className={cn(
+            "overflow-hidden flex-shrink-0 rounded-md",
+            isMobile ? "w-20 h-20" : "w-24 h-24"
+          )}>
             <img 
               src={item.image_url} 
               alt={item.name} 
@@ -100,7 +105,12 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
         <div className="flex-1">
           <div className="flex justify-between items-baseline mb-2">
             <div>
-              <h3 className="text-xl font-semibold text-purple-900">{item.name}</h3>
+              <h3 className={cn(
+                "font-semibold text-purple-900",
+                isMobile ? "text-lg" : "text-xl"
+              )}>
+                {item.name}
+              </h3>
               {item.weight && (
                 <p className="text-sm text-gray-500">{item.weight}</p>
               )}
@@ -111,13 +121,21 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                   ${parseFloat(item.old_price).toFixed(2)}
                 </span>
               )}
-              <p className="text-lg font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-1 rounded-full shadow-sm">
+              <p className={cn(
+                "font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-1 rounded-full shadow-sm",
+                isMobile ? "text-base" : "text-lg"
+              )}>
                 ${parseFloat(effectivePrice).toFixed(2)}
               </p>
             </div>
           </div>
           
-          <p className="text-gray-600 leading-relaxed mb-3">{item.description}</p>
+          <p className={cn(
+            "text-gray-600 leading-relaxed mb-3",
+            isMobile ? "text-sm" : "text-base"
+          )}>
+            {item.description}
+          </p>
           
           {!item.is_available && (
             <div className="mb-3 flex items-center gap-2 text-red-500">

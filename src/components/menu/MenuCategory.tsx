@@ -1,3 +1,4 @@
+
 import React from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -8,6 +9,7 @@ import {
 import { ChevronDown, ChevronUp } from "lucide-react";
 import MenuItem from "./MenuItem";
 import { MenuCategory as MenuCategoryType } from "@/types/menu";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MenuCategoryProps {
   category: MenuCategoryType;
@@ -22,6 +24,8 @@ const MenuCategory: React.FC<MenuCategoryProps> = ({
   toggleCategory,
   categoryIndex,
 }) => {
+  const isMobile = useIsMobile();
+  
   return (
     <Collapsible
       key={category.id}
@@ -39,7 +43,10 @@ const MenuCategory: React.FC<MenuCategoryProps> = ({
       )}
     >
       <CollapsibleTrigger className="w-full px-6 py-5 flex items-center justify-between cursor-pointer group transition-colors">
-        <h2 className="text-2xl font-semibold w-full flex items-center justify-between text-blue-950 group-hover:text-blue-600">
+        <h2 className={cn(
+          "font-semibold w-full flex items-center justify-between text-blue-950 group-hover:text-blue-600",
+          isMobile ? "text-xl" : "text-2xl"
+        )}>
           {category.name}
           <span className="ml-2">
             {isOpen ? (
@@ -52,7 +59,10 @@ const MenuCategory: React.FC<MenuCategoryProps> = ({
       </CollapsibleTrigger>
 
       <CollapsibleContent className="data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-        <div className="p-6 space-y-6">
+        <div className={cn(
+          "space-y-6",
+          isMobile ? "p-3" : "p-6"
+        )}>
           {category.items.length === 0 ? (
             <p className="text-center text-muted-foreground italic">
               No items in this category

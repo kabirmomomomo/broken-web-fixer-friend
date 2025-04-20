@@ -6,6 +6,7 @@ import { getRestaurantById } from "@/services/menuService";
 import { setupDatabase, handleRelationDoesNotExistError } from "@/lib/setupDatabase";
 import { supabase } from "@/lib/supabase";
 import { Restaurant } from "@/types/menu";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Component imports
 import LoadingState from "@/components/menu/LoadingState";
@@ -56,6 +57,7 @@ const MenuPreview = () => {
   const [isDbError, setIsDbError] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const isMobile = useIsMobile();
 
   // Optimize query with better caching and error handling
   const { data: restaurant, isLoading, error, refetch } = useQuery({
@@ -224,14 +226,17 @@ const MenuPreview = () => {
             closing_time={restaurantToDisplay.closing_time}
           />
           
-          <SearchBar onSearch={handleSearch} />
+          <div className={isMobile ? "px-2" : "px-6"}>
+            <SearchBar onSearch={handleSearch} />
+            
+            <MenuList 
+              categories={restaurantToDisplay.categories} 
+              openCategories={openCategories} 
+              toggleCategory={toggleCategory}
+              searchQuery={searchQuery}
+            />
+          </div>
           
-          <MenuList 
-            categories={restaurantToDisplay.categories} 
-            openCategories={openCategories} 
-            toggleCategory={toggleCategory}
-            searchQuery={searchQuery}
-          />
           <MenuFooter />
         </div>
         <Cart />
