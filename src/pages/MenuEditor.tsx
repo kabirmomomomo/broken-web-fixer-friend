@@ -1,0 +1,654 @@
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "@/components/ui/sonner";
+import { Separator } from "@/components/ui/separator";
+import { v4 as uuidv4 } from "uuid";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  getUserRestaurant,
+  saveRestaurantMenu,
+  generateStableRestaurantId,
+  uploadItemImage,
+  RestaurantUI,
+  MenuCategoryUI,
+  MenuItemUI,
+  MenuItemVariantUI,
+  MenuItemAddonUI,
+  MenuAddonOptionUI
+} from "@/services/menuService";
+import RestaurantForm from "@/components/menu/editor/RestaurantForm";
+import CategoriesList from "@/components/menu/editor/CategoriesList";
+import MenuItemEditor from "@/components/menu/editor/MenuItemEditor";
+import EmptyItemEditor from "@/components/menu/editor/EmptyItemEditor";
+import EditorHeader from "@/components/menu/editor/EditorHeader";
+import LoadingAnimation from "@/components/LoadingAnimation";
+
+const MenuEditor = () => {
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const [restaurant, setRestaurant] = useState<RestaurantUI>({
+    id: "",
+    name: "My Restaurant",
+    description: "Welcome to our restaurant",
+    categories: [],
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  const { data: restaurantData, isLoading: isLoadingRestaurant } = useQuery({
+    queryKey: ['restaurant', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      
+      const restaurant = await getUserRestaurant();
+      return restaurant;
+    },
+    enabled: !!user,
+  });
+
+  const saveMenuMutation = useMutation({
+    mutationFn: saveRestaurantMenu,
+    onSuccess: () => {
+      toast.success("Menu saved successfully!");
+    },
+    onError: (error) => {
+      console.error("Error saving menu:", error);
+      toast.error("Failed to save menu. Please try again.");
+    },
+  });
+
+  useEffect(() => {
+    if (!isLoadingRestaurant) {
+      if (restaurantData) {
+        setRestaurant(restaurantData);
+        
+        const expanded: Record<string, boolean> = {};
+        restaurantData.categories.forEach(category => {
+          expanded[category.id] = false;
+        });
+        setExpandedCategories(expanded);
+      } else if (user?.id) {
+        const stableId = generateStableRestaurantId(user.id);
+        const newRestaurant: RestaurantUI = {
+          id: stableId,
+          name: "My Restaurant",
+          description: "Welcome to our restaurant",
+          categories: [],
+        };
+        setRestaurant(newRestaurant);
+      }
+      setIsLoading(false);
+    }
+  }, [restaurantData, isLoadingRestaurant, user]);
+
+  const toggleCategoryExpand = (categoryId: string) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [categoryId]: !prev[categoryId]
+    }));
+  };
+
+  const addCategory = () => {
+    const newCategory: MenuCategoryUI = {
+      id: uuidv4(),
+      name: "New Category",
+      items: [],
+    };
+    
+    setRestaurant({
+      ...restaurant,
+      categories: [...restaurant.categories, newCategory],
+    });
+    
+    setExpandedCategories(prev => ({
+      ...prev,
+      [newCategory.id]: true
+    }));
+    
+    toast.success("Category added");
+  };
+
+  const updateCategory = (id: string, name: string) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === id ? { ...category, name } : category
+      ),
+    });
+  };
+
+  const deleteCategory = (id: string) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.filter((category) => category.id !== id),
+    });
+    toast.success("Category deleted");
+  };
+
+  const addMenuItem = (categoryId: string) => {
+    const newItemId = uuidv4();
+    
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: [
+                ...category.items,
+                {
+                  id: newItemId,
+                  name: "New Item",
+                  description: "Item description",
+                  price: "0.00",
+                  is_visible: true,
+                  is_available: true,
+                  variants: [],
+                  addons: []
+                },
+              ],
+            }
+          : category
+      ),
+    });
+    
+    setActiveItemId(newItemId);
+    
+    toast.success("Menu item added");
+  };
+
+  const updateMenuItem = (
+    categoryId: string,
+    itemId: string,
+    field: keyof MenuItemUI,
+    value: string | boolean
+  ) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map((item) =>
+                item.id === itemId ? { ...item, [field]: value } : item
+              ),
+            }
+          : category
+      ),
+    });
+  };
+
+  const deleteMenuItem = (categoryId: string, itemId: string) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.filter((item) => item.id !== itemId),
+            }
+          : category
+      ),
+    });
+    
+    if (activeItemId === itemId) {
+      setActiveItemId(null);
+    }
+    
+    toast.success("Menu item deleted");
+  };
+
+  const moveCategory = (index: number, direction: "up" | "down") => {
+    if (
+      (direction === "up" && index === 0) ||
+      (direction === "down" && index === restaurant.categories.length - 1)
+    ) {
+      return;
+    }
+
+    const newCategories = [...restaurant.categories];
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    const category = newCategories[index];
+    newCategories[index] = newCategories[newIndex];
+    newCategories[newIndex] = category;
+
+    setRestaurant({
+      ...restaurant,
+      categories: newCategories,
+    });
+  };
+
+  const moveMenuItem = (
+    categoryIndex: number,
+    itemIndex: number,
+    direction: "up" | "down"
+  ) => {
+    if (
+      (direction === "up" && itemIndex === 0) ||
+      (direction === "down" &&
+        itemIndex === restaurant.categories[categoryIndex].items.length - 1)
+    ) {
+      return;
+    }
+
+    const newCategories = [...restaurant.categories];
+    const newItemIndex = direction === "up" ? itemIndex - 1 : itemIndex + 1;
+    const items = [...newCategories[categoryIndex].items];
+    const item = items[itemIndex];
+    items[itemIndex] = items[newItemIndex];
+    items[newItemIndex] = item;
+
+    newCategories[categoryIndex] = {
+      ...newCategories[categoryIndex],
+      items,
+    };
+
+    setRestaurant({
+      ...restaurant,
+      categories: newCategories,
+    });
+  };
+
+  const addVariant = (categoryId: string, itemId: string) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      variants: [
+                        ...(item.variants || []),
+                        {
+                          id: uuidv4(),
+                          name: "New Variant",
+                          price: item.price,
+                        },
+                      ],
+                    }
+                  : item
+              ),
+            }
+          : category
+      ),
+    });
+  };
+
+  const updateVariant = (
+    categoryId: string,
+    itemId: string,
+    variantId: string,
+    field: keyof MenuItemVariantUI,
+    value: string
+  ) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      variants: (item.variants || []).map((variant) =>
+                        variant.id === variantId
+                          ? { ...variant, [field]: value }
+                          : variant
+                      ),
+                    }
+                  : item
+              ),
+            }
+          : category
+      ),
+    });
+  };
+
+  const deleteVariant = (
+    categoryId: string,
+    itemId: string,
+    variantId: string
+  ) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      variants: (item.variants || []).filter(
+                        (variant) => variant.id !== variantId
+                      ),
+                    }
+                  : item
+              ),
+            }
+          : category
+      ),
+    });
+  };
+
+  const addAddon = (categoryId: string, itemId: string) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      addons: [
+                        ...(item.addons || []),
+                        {
+                          id: uuidv4(),
+                          title: "New Add-on",
+                          type: "Single choice",
+                          options: [],
+                        },
+                      ],
+                    }
+                  : item
+              ),
+            }
+          : category
+      ),
+    });
+  };
+
+  const updateAddon = (
+    categoryId: string,
+    itemId: string,
+    addonId: string,
+    field: keyof MenuItemAddonUI,
+    value: string | "Single choice" | "Multiple choice"
+  ) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      addons: (item.addons || []).map((addon) =>
+                        addon.id === addonId
+                          ? { ...addon, [field]: value }
+                          : addon
+                      ),
+                    }
+                  : item
+              ),
+            }
+          : category
+      ),
+    });
+  };
+
+  const deleteAddon = (
+    categoryId: string,
+    itemId: string,
+    addonId: string
+  ) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      addons: (item.addons || []).filter(
+                        (addon) => addon.id !== addonId
+                      ),
+                    }
+                  : item
+              ),
+            }
+          : category
+      ),
+    });
+  };
+
+  const addAddonOption = (
+    categoryId: string,
+    itemId: string,
+    addonId: string
+  ) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      addons: (item.addons || []).map((addon) =>
+                        addon.id === addonId
+                          ? {
+                              ...addon,
+                              options: [
+                                ...(addon.options || []),
+                                {
+                                  id: uuidv4(),
+                                  name: "New Option",
+                                  price: "0.00",
+                                },
+                              ],
+                            }
+                          : addon
+                      ),
+                    }
+                  : item
+              ),
+            }
+          : category
+      ),
+    });
+  };
+
+  const updateAddonOption = (
+    categoryId: string,
+    itemId: string,
+    addonId: string,
+    optionId: string,
+    field: keyof MenuAddonOptionUI,
+    value: string
+  ) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      addons: (item.addons || []).map((addon) =>
+                        addon.id === addonId
+                          ? {
+                              ...addon,
+                              options: (addon.options || []).map((option) =>
+                                option.id === optionId
+                                  ? { ...option, [field]: value }
+                                  : option
+                              ),
+                            }
+                          : addon
+                      ),
+                    }
+                  : item
+              ),
+            }
+          : category
+      ),
+    });
+  };
+
+  const deleteAddonOption = (
+    categoryId: string,
+    itemId: string,
+    addonId: string,
+    optionId: string
+  ) => {
+    setRestaurant({
+      ...restaurant,
+      categories: restaurant.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      addons: (item.addons || []).map((addon) =>
+                        addon.id === addonId
+                          ? {
+                              ...addon,
+                              options: (addon.options || []).filter(
+                                (option) => option.id !== optionId
+                              ),
+                            }
+                          : addon
+                      ),
+                    }
+                  : item
+              ),
+            }
+          : category
+      ),
+    });
+  };
+
+  const handleImageUpload = async (categoryId: string, itemId: string, file: File) => {
+    try {
+      const url = await uploadItemImage(file, itemId);
+      if (url) {
+        updateMenuItem(categoryId, itemId, "image_url", url);
+        toast.success("Image uploaded successfully");
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image");
+    }
+  };
+
+  const handleSaveMenu = () => {
+    saveMenuMutation.mutate(restaurant);
+  };
+
+  const handleSaveRestaurantDetails = async (details: Partial<typeof restaurant>) => {
+    setRestaurant({
+      ...restaurant,
+      ...details
+    });
+    
+    if (saveMenuMutation.isPending) return;
+    saveMenuMutation.mutate({
+      ...restaurant,
+      ...details
+    });
+  };
+
+  if (isLoading) {
+    return <LoadingAnimation />;
+  }
+
+  let activeItem: MenuItemUI | null = null;
+  let activeCategoryId: string | null = null;
+
+  if (activeItemId) {
+    for (const category of restaurant.categories) {
+      const item = category.items.find(item => item.id === activeItemId);
+      if (item) {
+        activeItem = item;
+        activeCategoryId = category.id;
+        break;
+      }
+    }
+  }
+
+  return (
+    <div className="container mx-auto py-10 px-4 max-w-7xl">
+      <EditorHeader 
+        restaurant={restaurant}
+        handleSaveMenu={handleSaveMenu}
+        handleSaveRestaurantDetails={handleSaveRestaurantDetails}
+        signOut={signOut}
+        isSaving={saveMenuMutation.isPending}
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="md:col-span-1 space-y-6">
+          <RestaurantForm restaurant={restaurant} setRestaurant={setRestaurant} />
+
+          <Separator />
+
+          <CategoriesList
+            categories={restaurant.categories}
+            expandedCategories={expandedCategories}
+            toggleCategoryExpand={toggleCategoryExpand}
+            updateCategory={updateCategory}
+            deleteCategory={deleteCategory}
+            moveCategory={moveCategory}
+            addMenuItem={addMenuItem}
+            moveMenuItem={moveMenuItem}
+            deleteMenuItem={deleteMenuItem}
+            setActiveItemId={setActiveItemId}
+            addCategory={addCategory}
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          {activeItem && activeCategoryId ? (
+            <MenuItemEditor 
+              activeItem={activeItem}
+              activeCategoryId={activeCategoryId}
+              updateMenuItem={updateMenuItem}
+              addVariant={addVariant}
+              updateVariant={updateVariant}
+              deleteVariant={deleteVariant}
+              addAddon={addAddon}
+              updateAddon={updateAddon}
+              deleteAddon={deleteAddon}
+              addAddonOption={addAddonOption}
+              updateAddonOption={updateAddonOption}
+              deleteAddonOption={deleteAddonOption}
+              handleImageUpload={handleImageUpload}
+              handleSaveMenu={handleSaveMenu}
+              setActiveItemId={setActiveItemId}
+              isSaving={saveMenuMutation.isPending}
+            />
+          ) : (
+            <EmptyItemEditor 
+              hasCategories={restaurant.categories.length > 0}
+              addCategory={addCategory}
+              addMenuItem={addMenuItem}
+              firstCategoryId={restaurant.categories.length > 0 ? restaurant.categories[0].id : undefined}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MenuEditor;

@@ -1,0 +1,113 @@
+
+import { supabase } from './supabase';
+import { toast } from '@/components/ui/sonner';
+
+export const setupDatabase = async () => {
+  try {
+    console.log('Setting up database tables...');
+    
+    // Create restaurants table
+    const { data: restaurantsData, error: restaurantsError } = await supabase
+      .from('restaurants')
+      .select('count(*)', { count: 'exact' });
+
+    if (restaurantsError && restaurantsError.code === 'PGRST116') {
+      // Table doesn't exist, create it
+      const { error: createRestaurantsError } = await supabase.rpc(
+        'create_table_if_not_exists',
+        {
+          table_name: 'restaurants',
+          table_definition: `
+            id UUID PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            user_id UUID,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+          `
+        }
+      );
+
+      if (createRestaurantsError) {
+        console.error('Error creating restaurants table:', createRestaurantsError);
+        toast.error('Could not create restaurants table. Some features may not work.');
+        return false;
+      }
+    }
+
+    // Create menu_categories table
+    const { data: categoriesData, error: categoriesError } = await supabase
+      .from('menu_categories')
+      .select('count(*)', { count: 'exact' });
+
+    if (categoriesError && categoriesError.code === 'PGRST116') {
+      // Table doesn't exist, create it
+      const { error: createCategoriesError } = await supabase.rpc(
+        'create_table_if_not_exists',
+        {
+          table_name: 'menu_categories',
+          table_definition: `
+            id UUID PRIMARY KEY,
+            name TEXT NOT NULL,
+            restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+            "order" INTEGER DEFAULT 0,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+          `
+        }
+      );
+
+      if (createCategoriesError) {
+        console.error('Error creating menu_categories table:', createCategoriesError);
+        toast.error('Could not create menu_categories table. Some features may not work.');
+        return false;
+      }
+    }
+
+    // Create menu_items table
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('menu_items')
+      .select('count(*)', { count: 'exact' });
+
+    if (itemsError && itemsError.code === 'PGRST116') {
+      // Table doesn't exist, create it
+      const { error: createItemsError } = await supabase.rpc(
+        'create_table_if_not_exists',
+        {
+          table_name: 'menu_items',
+          table_definition: `
+            id UUID PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            price TEXT NOT NULL,
+            category_id UUID NOT NULL REFERENCES menu_categories(id) ON DELETE CASCADE,
+            "order" INTEGER DEFAULT 0,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+          `
+        }
+      );
+
+      if (createItemsError) {
+        console.error('Error creating menu_items table:', createItemsError);
+        toast.error('Could not create menu_items table. Some features may not work.');
+        return false;
+      }
+    }
+
+    console.log('Database tables setup complete!');
+    return true;
+  } catch (error) {
+    console.error('Error setting up database:', error);
+    toast.error('Database setup failed. Please try again.');
+    return false;
+  }
+};
+
+export const handleRelationDoesNotExistError = async (error: any): Promise<boolean> => {
+  if (error?.message?.includes("relation") && error?.message?.includes("does not exist")) {
+    console.log("Detected missing table error, attempting database setup...");
+    return await setupDatabase();
+  }
+  return false;
+};
