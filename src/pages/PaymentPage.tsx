@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -7,9 +7,17 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import LoadingAnimation from '@/components/LoadingAnimation';
 import OrderBill from '@/components/menu/OrderBill';
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/accordion';
+import { Download } from 'lucide-react';
 
 const PaymentPage = () => {
   const { menuId } = useParams();
+  const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
 
   const { data: restaurant, isLoading } = useQuery({
     queryKey: ['restaurant-payment', menuId],
@@ -55,8 +63,23 @@ const PaymentPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-start bg-gradient-to-b from-purple-50 to-white p-4 pt-8">
-      <OrderBill />
-      
+      <div className="w-full max-w-md mb-6">
+        <Accordion
+          type="single"
+          collapsible
+          value={orderSummaryOpen ? "order-summary" : undefined}
+          onValueChange={(val) => setOrderSummaryOpen(val === "order-summary")}
+        >
+          <AccordionItem value="order-summary">
+            <AccordionTrigger className="text-xl text-purple-900 bg-white rounded-md px-4 py-3 border border-purple-100 mb-0 font-semibold">
+              Order Summary
+            </AccordionTrigger>
+            <AccordionContent>
+              <OrderBill hideCardWrapper showDownloadButton className="mt-2" />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-2xl text-purple-900">Complete Payment</CardTitle>
