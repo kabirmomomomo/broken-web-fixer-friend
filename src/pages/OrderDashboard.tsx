@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -135,6 +134,12 @@ const OrderDashboard = () => {
     }
   };
   
+  const getTableNumber = (tableId: string | undefined) => {
+    if (!tableId) return null;
+    const number = tableId.match(/\d+/);
+    return number ? number[0] : tableId;
+  };
+
   const filteredOrders = orders.filter(order => {
     if (activeTab === 'all') return true;
     if (activeTab === 'table') return !!order.table_id;
@@ -245,7 +250,7 @@ const OrderDashboard = () => {
                             {order.table_id ? (
                               <div className="flex items-center">
                                 <TableIcon className="h-4 w-4 mr-1 text-purple-600" />
-                                {order.table_id}
+                                Table {getTableNumber(order.table_id)}
                               </div>
                             ) : (
                               <div className="flex items-center">
@@ -314,6 +319,7 @@ const OrderDashboard = () => {
             {Object.entries(ordersByTable).map(([tableId, tableOrders]) => {
               if (tableId === 'no-table') return null;
               
+              const tableNumber = getTableNumber(tableId);
               const tableTotal = tableOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
               const totalItems = tableOrders.reduce(
                 (sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 
@@ -326,7 +332,7 @@ const OrderDashboard = () => {
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-lg flex items-center">
                         <TableIcon className="h-5 w-5 mr-2 text-purple-800" />
-                        Table {tableId}
+                        Table {tableNumber}
                       </CardTitle>
                       <div className="flex items-center gap-2">
                         <Badge className="bg-purple-100 text-purple-800">
@@ -464,7 +470,7 @@ const OrderDashboard = () => {
                                 {order.table_id ? (
                                   <div className="flex items-center">
                                     <TableIcon className="h-4 w-4 mr-1 text-purple-600" />
-                                    Table {order.table_id}
+                                    Table {getTableNumber(order.table_id)}
                                   </div>
                                 ) : (
                                   <div className="flex items-center">

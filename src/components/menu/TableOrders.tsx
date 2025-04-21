@@ -11,6 +11,11 @@ const TableOrders = () => {
   const totalAmount = tableOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
   const totalItems = tableOrders.reduce((sum, order) => 
     sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
+
+  const getTableNumber = (tableId: string) => {
+    const number = tableId.match(/\d+/);
+    return number ? number[0] : tableId;
+  };
   
   return (
     <Card className="w-full bg-gradient-to-br from-purple-50 to-white shadow-md border-purple-100">
@@ -18,7 +23,7 @@ const TableOrders = () => {
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg font-bold text-purple-900 flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Table Orders
+            Table {tableOrders[0]?.table_id ? getTableNumber(tableOrders[0].table_id) : ''} Orders
           </CardTitle>
           <Badge variant="outline" className="bg-white text-purple-900 border-purple-200">
             {tableOrders.length} {tableOrders.length === 1 ? 'Order' : 'Orders'}
