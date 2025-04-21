@@ -1,32 +1,16 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { format } from 'date-fns';
 import { useOrders } from '@/contexts/OrderContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Smartphone, Users } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
 
 const TableOrders = () => {
   const { tableOrders } = useOrders();
-  const [searchParams] = useSearchParams();
-  const tableId = searchParams.get('table');
-  
   const totalAmount = tableOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
   const totalItems = tableOrders.reduce((sum, order) => 
     sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
-
-  const getTableNumber = (tableId: string) => {
-    if (!tableId) return '';
-    const number = tableId.match(/\d+/);
-    return number ? number[0] : tableId;
-  };
-  
-  // Debug log to check for tableOrders data
-  useEffect(() => {
-    console.log('TableOrders component - Current tableOrders:', tableOrders);
-    console.log('Current tableId from URL:', tableId);
-  }, [tableOrders, tableId]);
   
   return (
     <Card className="w-full bg-gradient-to-br from-purple-50 to-white shadow-md border-purple-100">
@@ -34,7 +18,7 @@ const TableOrders = () => {
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg font-bold text-purple-900 flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Table {tableId ? getTableNumber(tableId) : ''} Orders
+            Table Orders
           </CardTitle>
           <Badge variant="outline" className="bg-white text-purple-900 border-purple-200">
             {tableOrders.length} {tableOrders.length === 1 ? 'Order' : 'Orders'}
@@ -69,7 +53,7 @@ const TableOrders = () => {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  {order.items && order.items.map((item) => (
+                  {order.items.map((item) => (
                     <div key={item.id} className="flex justify-between text-sm">
                       <span className="text-gray-600">
                         {item.quantity}× {item.item_name}

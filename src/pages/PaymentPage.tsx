@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -13,33 +13,22 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from '@/components/ui/accordion';
-import { useOrders } from '@/contexts/OrderContext';
+import { Download } from 'lucide-react';
 
 const PaymentPage = () => {
   const { menuId } = useParams();
-  const [searchParams] = useSearchParams();
-  const tableId = searchParams.get('table');
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
-  const { tableOrders } = useOrders();
-
-  // Log parameters for debugging
-  console.log('PaymentPage parameters:', { menuId, tableId, tableOrders });
 
   const { data: restaurant, isLoading } = useQuery({
     queryKey: ['restaurant-payment', menuId],
     queryFn: async () => {
-      console.log('Fetching restaurant payment details for:', menuId);
       const { data, error } = await supabase
         .from('restaurants')
         .select('name, payment_qr_code, upi_id')
         .eq('id', menuId)
         .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching restaurant payment details:', error);
-        throw error;
-      }
-      console.log('Restaurant payment data:', data);
+      if (error) throw error;
       return data;
     },
     staleTime: 30000,
@@ -53,7 +42,7 @@ const PaymentPage = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-50 to-white p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-center text-xl text-purple-900">Payment Not Configured</CardTitle>
+            <CardTitle className="text-center text-2xl text-purple-900">Payment Not Configured</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground">
@@ -71,13 +60,6 @@ const PaymentPage = () => {
       </div>
     );
   }
-
-  // Build the thank you URL with the table parameter if it exists
-  const thankYouUrl = tableId 
-    ? `/thank-you?table=${tableId}` 
-    : '/thank-you';
-
-  console.log('Thank you URL will be:', thankYouUrl);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-start bg-gradient-to-b from-purple-50 to-white p-4 pt-8">
@@ -100,7 +82,7 @@ const PaymentPage = () => {
       </div>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center text-xl text-purple-900">Complete Payment</CardTitle>
+          <CardTitle className="text-center text-2xl text-purple-900">Complete Payment</CardTitle>
         </CardHeader>
         <CardContent className="text-center space-y-6">
           {restaurant.payment_qr_code && (
@@ -127,7 +109,7 @@ const PaymentPage = () => {
           )}
 
           <Button
-            onClick={() => window.location.href = thankYouUrl}
+            onClick={() => window.location.href = '/thank-you'}
             className="w-full mt-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
           >
             Confirm Payment

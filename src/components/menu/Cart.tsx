@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useOrders } from '@/contexts/OrderContext';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 
 interface CartProps {
@@ -21,50 +20,17 @@ interface CartProps {
 const Cart: React.FC<CartProps> = ({ tableId }) => {
   const [open, setOpen] = useState(false);
   const { menuId } = useParams();
-  const [searchParams] = useSearchParams();
   const { cartItems, removeFromCart, updateQuantity, getCartTotal, getItemCount, clearCart } = useCart();
   const { placeOrder, isLoading } = useOrders();
-  
-  const tableIdFromUrl = searchParams.get('table');
-  const effectiveTableId = tableId || tableIdFromUrl;
-
-  console.log("Cart component initialized with:", { 
-    menuId, 
-    tableIdFromProps: tableId, 
-    tableIdFromUrl, 
-    effectiveTableId
-  });
 
   const handleCheckout = async () => {
-    try {
-      if (!menuId) {
-        console.error('Missing menuId in URL parameters');
-        toast.error('Restaurant ID not found');
-        return;
-      }
-      
-      console.log('Checkout initiated:');
-      console.log('- menuId:', menuId);
-      console.log('- tableId:', effectiveTableId || 'none');
-      console.log('- cart items:', cartItems);
-      console.log('- cart total:', getCartTotal());
-      
-      if (!menuId || menuId === 'undefined' || menuId === 'null') {
-        toast.error('Invalid restaurant ID');
-        return;
-      }
-      
-      // Pass the tableId as a string (not undefined object) to the placeOrder function
-      const tableIdToUse = effectiveTableId ? String(effectiveTableId) : undefined;
-      await placeOrder(menuId, tableIdToUse);
-      setOpen(false);
-    } catch (error) {
-      console.error('Error during checkout:', error);
-      toast.error('Failed to place order. Please try again.');
+    if (!menuId) {
+      toast.error('Restaurant ID not found');
+      return;
     }
+    await placeOrder(menuId, tableId);
+    setOpen(false);
   };
-
-  const displayTableId = effectiveTableId ? String(effectiveTableId).replace(/\D/g, '') : undefined;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -86,7 +52,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
         <SheetHeader>
           <SheetTitle className="text-xl flex items-center gap-2 text-purple-900">
             <ShoppingCart className="h-5 w-5" />
-            Your Cart {displayTableId && <span className="text-sm font-normal">(Table {displayTableId})</span>}
+            Your Cart {tableId && <span className="text-sm font-normal">(Table {tableId})</span>}
           </SheetTitle>
         </SheetHeader>
         
@@ -175,7 +141,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
                     onClick={handleCheckout}
                     disabled={isLoading || cartItems.length === 0}
                   >
-                    {isLoading ? 'Placing Order...' : `Checkout ${displayTableId ? `(Table ${displayTableId})` : ''}`}
+                    {isLoading ? 'Placing Order...' : `Checkout ${tableId ? `(Table ${tableId})` : ''}`}
                   </Button>
                   <Button 
                     variant="outline" 

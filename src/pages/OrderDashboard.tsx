@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Smartphone, User, Table as TableIcon, Trash2 } from 'lucide-react';
@@ -67,7 +67,6 @@ const OrderDashboard = () => {
         
       if (error) throw error;
       
-      console.log('Orders fetched:', data);
       setOrders(data || []);
     } catch (err: any) {
       console.error('Error fetching orders:', err);
@@ -136,13 +135,6 @@ const OrderDashboard = () => {
     }
   };
   
-  const getTableNumber = (tableId: string | undefined) => {
-    if (!tableId) return null;
-    // Extract the numeric part from the table ID (e.g., "table-4" -> "4")
-    const number = tableId.match(/\d+/);
-    return number ? number[0] : tableId;
-  };
-
   const filteredOrders = orders.filter(order => {
     if (activeTab === 'all') return true;
     if (activeTab === 'table') return !!order.table_id;
@@ -150,13 +142,9 @@ const OrderDashboard = () => {
   });
   
   const ordersByTable = filteredOrders.reduce((acc, order) => {
-    if (!order.table_id) {
-      if (!acc['no-table']) acc['no-table'] = [];
-      acc['no-table'].push(order);
-    } else {
-      if (!acc[order.table_id]) acc[order.table_id] = [];
-      acc[order.table_id].push(order);
-    }
+    const tableId = order.table_id || 'no-table';
+    if (!acc[tableId]) acc[tableId] = [];
+    acc[tableId].push(order);
     return acc;
   }, {} as Record<string, Order[]>);
   
@@ -257,7 +245,7 @@ const OrderDashboard = () => {
                             {order.table_id ? (
                               <div className="flex items-center">
                                 <TableIcon className="h-4 w-4 mr-1 text-purple-600" />
-                                Table {getTableNumber(order.table_id)}
+                                {order.table_id}
                               </div>
                             ) : (
                               <div className="flex items-center">
@@ -326,7 +314,6 @@ const OrderDashboard = () => {
             {Object.entries(ordersByTable).map(([tableId, tableOrders]) => {
               if (tableId === 'no-table') return null;
               
-              const tableNumber = getTableNumber(tableId);
               const tableTotal = tableOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
               const totalItems = tableOrders.reduce(
                 (sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 
@@ -339,7 +326,7 @@ const OrderDashboard = () => {
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-lg flex items-center">
                         <TableIcon className="h-5 w-5 mr-2 text-purple-800" />
-                        Table {tableNumber}
+                        Table {tableId}
                       </CardTitle>
                       <div className="flex items-center gap-2">
                         <Badge className="bg-purple-100 text-purple-800">
@@ -350,7 +337,7 @@ const OrderDashboard = () => {
                           size="sm"
                           className="h-7 px-2 text-destructive hover:text-destructive"
                           onClick={() => {
-                            if (window.confirm(`Are you sure you want to delete all orders from Table ${tableNumber}?`)) {
+                            if (window.confirm(`Are you sure you want to delete all orders from Table ${tableId}?`)) {
                               deleteTableOrders(tableId);
                             }
                           }}
@@ -477,7 +464,7 @@ const OrderDashboard = () => {
                                 {order.table_id ? (
                                   <div className="flex items-center">
                                     <TableIcon className="h-4 w-4 mr-1 text-purple-600" />
-                                    Table {getTableNumber(order.table_id)}
+                                    Table {order.table_id}
                                   </div>
                                 ) : (
                                   <div className="flex items-center">
