@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -118,14 +117,29 @@ const OrderDashboard = () => {
     }
   };
   
-  // Filter orders based on the active tab
+  const deleteTableOrders = async (tableId: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('table_id', tableId);
+        
+      if (error) throw error;
+      
+      toast.success(`All orders from Table ${tableId} deleted`);
+      fetchOrders();
+    } catch (err: any) {
+      console.error('Error deleting table orders:', err);
+      toast.error('Failed to delete orders');
+    }
+  };
+  
   const filteredOrders = orders.filter(order => {
     if (activeTab === 'all') return true;
     if (activeTab === 'table') return !!order.table_id;
     return order.status === activeTab;
   });
   
-  // Group orders by table
   const ordersByTable = filteredOrders.reduce((acc, order) => {
     const tableId = order.table_id || 'no-table';
     if (!acc[tableId]) acc[tableId] = [];
@@ -313,9 +327,23 @@ const OrderDashboard = () => {
                         <TableIcon className="h-5 w-5 mr-2 text-purple-800" />
                         Table {tableId}
                       </CardTitle>
-                      <Badge className="bg-purple-100 text-purple-800">
-                        {tableOrders.length} Orders
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-purple-100 text-purple-800">
+                          {tableOrders.length} Orders
+                        </Badge>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="h-7 px-2 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to delete all orders from Table ${tableId}?`)) {
+                              deleteTableOrders(tableId);
+                            }
+                          }}
+                        >
+                          <trash-2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     <CardDescription>
                       {totalItems} items · ${tableTotal.toFixed(2)} total
