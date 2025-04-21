@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   Dialog,
@@ -44,20 +45,35 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
   children,
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
+  // Store form state locally only for the duration the dialog/sheet is open
   const [formData, setFormData] = React.useState(restaurant);
   const isMobile = useIsMobile();
 
-  // Update formData when restaurant prop changes
+  // Only update formData when dialog/sheet first opens or on restaurant change
   React.useEffect(() => {
-    setFormData(restaurant);
-  }, [restaurant]);
+    if (isOpen) {
+      setFormData(restaurant);
+    }
+  }, [restaurant, isOpen]);
+
+  // Select all value in an input/textarea on focus, like add item dialog
+  const selectAllOnFocus: React.FocusEventHandler<HTMLInputElement | HTMLTextAreaElement> =
+    (e) => {
+      e.target.select();
+    };
+
+  const handleChange = (
+    field: keyof typeof formData,
+    value: string
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Log the data being saved to help with debugging
-    console.log("Saving restaurant details:", formData);
-    
     onSave(formData);
     toast.success("Restaurant details saved");
     setIsOpen(false);
@@ -71,8 +87,12 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
           <Input
             id="image_url"
             value={formData.image_url || ''}
-            onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+            onChange={(e) => handleChange("image_url", e.target.value)}
             placeholder="https://example.com/image.jpg"
+            onFocus={selectAllOnFocus}
+            autoComplete="off"
+            spellCheck={false}
+            inputMode="url"
           />
         </div>
         <div className="col-span-2">
@@ -80,8 +100,11 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
           <Input
             id="name"
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => handleChange("name", e.target.value)}
             required
+            onFocus={selectAllOnFocus}
+            autoComplete="off"
+            spellCheck={false}
           />
         </div>
         <div className="col-span-2">
@@ -89,8 +112,11 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
           <Textarea
             id="description"
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            onChange={(e) => handleChange("description", e.target.value)}
             required
+            onFocus={selectAllOnFocus}
+            autoComplete="off"
+            spellCheck={false}
           />
         </div>
         <div className="col-span-2">
@@ -98,8 +124,12 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
           <Input
             id="google_review_link"
             value={formData.google_review_link || ''}
-            onChange={(e) => setFormData({ ...formData, google_review_link: e.target.value })}
+            onChange={(e) => handleChange("google_review_link", e.target.value)}
             placeholder="https://g.page/..."
+            onFocus={selectAllOnFocus}
+            autoComplete="off"
+            spellCheck={false}
+            inputMode="url"
           />
         </div>
         <div className="col-span-2">
@@ -107,8 +137,11 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
           <Input
             id="location"
             value={formData.location || ''}
-            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+            onChange={(e) => handleChange("location", e.target.value)}
             placeholder="123 Restaurant St, City"
+            onFocus={selectAllOnFocus}
+            autoComplete="off"
+            spellCheck={false}
           />
         </div>
         <div className="col-span-2 sm:col-span-1">
@@ -116,8 +149,12 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
           <Input
             id="phone"
             value={formData.phone || ''}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            onChange={(e) => handleChange("phone", e.target.value)}
             placeholder="+1 (555) 123-4567"
+            onFocus={selectAllOnFocus}
+            inputMode="tel"
+            autoComplete="off"
+            spellCheck={false}
           />
         </div>
         <div className="col-span-2 sm:col-span-1">
@@ -125,8 +162,11 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
           <Input
             id="wifi_password"
             value={formData.wifi_password || ''}
-            onChange={(e) => setFormData({ ...formData, wifi_password: e.target.value })}
+            onChange={(e) => handleChange("wifi_password", e.target.value)}
             placeholder="restaurant123"
+            onFocus={selectAllOnFocus}
+            autoComplete="off"
+            spellCheck={false}
           />
         </div>
         <div className="col-span-2 sm:col-span-1">
@@ -134,8 +174,11 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
           <Input
             id="opening_time"
             value={formData.opening_time || ''}
-            onChange={(e) => setFormData({ ...formData, opening_time: e.target.value })}
+            onChange={(e) => handleChange("opening_time", e.target.value)}
             placeholder="11:00 AM"
+            onFocus={selectAllOnFocus}
+            autoComplete="off"
+            spellCheck={false}
           />
         </div>
         <div className="col-span-2 sm:col-span-1">
@@ -143,8 +186,11 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
           <Input
             id="closing_time"
             value={formData.closing_time || ''}
-            onChange={(e) => setFormData({ ...formData, closing_time: e.target.value })}
+            onChange={(e) => handleChange("closing_time", e.target.value)}
             placeholder="10:00 PM"
+            onFocus={selectAllOnFocus}
+            autoComplete="off"
+            spellCheck={false}
           />
         </div>
       </div>
