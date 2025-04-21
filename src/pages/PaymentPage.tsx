@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -17,6 +17,8 @@ import { Download } from 'lucide-react';
 
 const PaymentPage = () => {
   const { menuId } = useParams();
+  const [searchParams] = useSearchParams();
+  const tableId = searchParams.get('table');
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
 
   const { data: restaurant, isLoading } = useQuery({
@@ -60,6 +62,11 @@ const PaymentPage = () => {
       </div>
     );
   }
+
+  // Build the thank you URL with the table parameter if it exists
+  const thankYouUrl = tableId 
+    ? `/thank-you?table=${tableId}` 
+    : '/thank-you';
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-start bg-gradient-to-b from-purple-50 to-white p-4 pt-8">
@@ -109,7 +116,7 @@ const PaymentPage = () => {
           )}
 
           <Button
-            onClick={() => window.location.href = '/thank-you'}
+            onClick={() => window.location.href = thankYouUrl}
             className="w-full mt-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
           >
             Confirm Payment

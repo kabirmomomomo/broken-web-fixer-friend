@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/sonner';
@@ -137,13 +138,24 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log('Device ID:', deviceId);
       console.log('Cart items:', cartItems);
       
+      // Ensure we have the correct restaurant_id
+      if (!restaurantId) {
+        console.error('Missing restaurant ID');
+        toast.error('Cannot place order: Missing restaurant information');
+        return;
+      }
+      
       const orderData = {
         restaurant_id: restaurantId,
         total_amount: getCartTotal(),
         status: 'placed',
         device_id: deviceId,
-        ...(tableId ? { table_id: tableId } : {}) 
       };
+      
+      // Only add table_id if it exists and is not null/undefined
+      if (tableId) {
+        orderData['table_id'] = tableId;
+      }
       
       console.log('Order data to insert:', orderData);
       
@@ -160,15 +172,31 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       console.log('Order inserted successfully:', order);
       
-      const orderItems = cartItems.map(item => ({
-        order_id: order.id,
-        item_id: item.id,
-        item_name: item.name,
-        quantity: item.quantity,
-        price: parseFloat(item.selectedVariant ? item.selectedVariant.price : item.price),
-        variant_name: item.selectedVariant?.name,
-        variant_id: item.selectedVariant?.id
-      }));
+      // Ensure all cart items have proper price values as numbers
+      const orderItems = cartItems.map(item => {
+        let price = 0;
+        
+        // Make sure we have a valid numeric price
+        if (item.selectedVariant) {
+          price = typeof item.selectedVariant.price === 'string' 
+            ? parseFloat(item.selectedVariant.price) 
+            : item.selectedVariant.price;
+        } else {
+          price = typeof item.price === 'string' 
+            ? parseFloat(item.price) 
+            : item.price;
+        }
+        
+        return {
+          order_id: order.id,
+          item_id: item.id,
+          item_name: item.name,
+          quantity: item.quantity,
+          price: price,
+          variant_name: item.selectedVariant?.name || null,
+          variant_id: item.selectedVariant?.id || null
+        };
+      });
 
       console.log('Order items to insert:', orderItems);
 

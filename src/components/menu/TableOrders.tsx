@@ -17,6 +17,7 @@ const TableOrders = () => {
     sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
 
   const getTableNumber = (tableId: string) => {
+    if (!tableId) return '';
     const number = tableId.match(/\d+/);
     return number ? number[0] : tableId;
   };
@@ -68,7 +69,7 @@ const TableOrders = () => {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  {order.items.map((item) => (
+                  {order.items && order.items.map((item) => (
                     <div key={item.id} className="flex justify-between text-sm">
                       <span className="text-gray-600">
                         {item.quantity}× {item.item_name}

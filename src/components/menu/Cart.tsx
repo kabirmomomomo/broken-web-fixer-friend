@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
@@ -28,8 +29,16 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
       toast.error('Restaurant ID not found');
       return;
     }
-    await placeOrder(menuId, tableId);
-    setOpen(false);
+    
+    console.log('Checkout clicked - menuId:', menuId, 'tableId:', tableId);
+    
+    try {
+      await placeOrder(menuId, tableId);
+      setOpen(false);
+    } catch (error) {
+      console.error('Error during checkout:', error);
+      // The toast is already shown in placeOrder function
+    }
   };
 
   return (
@@ -52,7 +61,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
         <SheetHeader>
           <SheetTitle className="text-xl flex items-center gap-2 text-purple-900">
             <ShoppingCart className="h-5 w-5" />
-            Your Cart {tableId && <span className="text-sm font-normal">(Table {tableId})</span>}
+            Your Cart {tableId && <span className="text-sm font-normal">(Table {tableId.replace(/\D/g, '')})</span>}
           </SheetTitle>
         </SheetHeader>
         
@@ -141,7 +150,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
                     onClick={handleCheckout}
                     disabled={isLoading || cartItems.length === 0}
                   >
-                    {isLoading ? 'Placing Order...' : `Checkout ${tableId ? `(Table ${tableId})` : ''}`}
+                    {isLoading ? 'Placing Order...' : `Checkout ${tableId ? `(Table ${tableId.replace(/\D/g, '')})` : ''}`}
                   </Button>
                   <Button 
                     variant="outline" 
