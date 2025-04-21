@@ -13,7 +13,6 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from '@/components/ui/accordion';
-import { Download } from 'lucide-react';
 
 const PaymentPage = () => {
   const { menuId } = useParams();
@@ -21,16 +20,24 @@ const PaymentPage = () => {
   const tableId = searchParams.get('table');
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
 
+  // Log parameters for debugging
+  console.log('PaymentPage parameters:', { menuId, tableId });
+
   const { data: restaurant, isLoading } = useQuery({
     queryKey: ['restaurant-payment', menuId],
     queryFn: async () => {
+      console.log('Fetching restaurant payment details for:', menuId);
       const { data, error } = await supabase
         .from('restaurants')
         .select('name, payment_qr_code, upi_id')
         .eq('id', menuId)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching restaurant payment details:', error);
+        throw error;
+      }
+      console.log('Restaurant payment data:', data);
       return data;
     },
     staleTime: 30000,
@@ -67,6 +74,8 @@ const PaymentPage = () => {
   const thankYouUrl = tableId 
     ? `/thank-you?table=${tableId}` 
     : '/thank-you';
+
+  console.log('Thank you URL will be:', thankYouUrl);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-start bg-gradient-to-b from-purple-50 to-white p-4 pt-8">

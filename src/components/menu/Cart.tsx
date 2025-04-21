@@ -25,21 +25,27 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
   const { placeOrder, isLoading } = useOrders();
 
   const handleCheckout = async () => {
-    if (!menuId) {
-      toast.error('Restaurant ID not found');
-      return;
-    }
-    
-    console.log('Checkout clicked - menuId:', menuId, 'tableId:', tableId);
-    
     try {
+      if (!menuId) {
+        console.error('Missing menuId in URL parameters');
+        toast.error('Restaurant ID not found');
+        return;
+      }
+      
+      console.log('Checkout initiated:');
+      console.log('- menuId:', menuId);
+      console.log('- tableId:', tableId || 'none');
+      
       await placeOrder(menuId, tableId);
       setOpen(false);
     } catch (error) {
       console.error('Error during checkout:', error);
-      // The toast is already shown in placeOrder function
+      toast.error('Failed to place order. Please try again.');
     }
   };
+
+  // Format the table display by stripping non-numeric characters
+  const displayTableId = tableId ? tableId.replace(/\D/g, '') : undefined;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -61,7 +67,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
         <SheetHeader>
           <SheetTitle className="text-xl flex items-center gap-2 text-purple-900">
             <ShoppingCart className="h-5 w-5" />
-            Your Cart {tableId && <span className="text-sm font-normal">(Table {tableId.replace(/\D/g, '')})</span>}
+            Your Cart {displayTableId && <span className="text-sm font-normal">(Table {displayTableId})</span>}
           </SheetTitle>
         </SheetHeader>
         
@@ -150,7 +156,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
                     onClick={handleCheckout}
                     disabled={isLoading || cartItems.length === 0}
                   >
-                    {isLoading ? 'Placing Order...' : `Checkout ${tableId ? `(Table ${tableId.replace(/\D/g, '')})` : ''}`}
+                    {isLoading ? 'Placing Order...' : `Checkout ${displayTableId ? `(Table ${displayTableId})` : ''}`}
                   </Button>
                   <Button 
                     variant="outline" 

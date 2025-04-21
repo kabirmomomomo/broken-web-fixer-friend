@@ -133,32 +133,38 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setIsLoading(true);
     try {
-      console.log('Placing order with restaurant ID:', restaurantId);
-      console.log('Table ID:', tableId);
-      console.log('Device ID:', deviceId);
-      console.log('Cart items:', cartItems);
+      // Debug logs to track input data
+      console.log('Order details:');
+      console.log('- Restaurant ID:', restaurantId);
+      console.log('- Table ID:', tableId);
+      console.log('- Device ID:', deviceId);
+      console.log('- Cart items:', cartItems);
       
-      // Ensure we have the correct restaurant_id
+      // Validate restaurant ID
       if (!restaurantId) {
         console.error('Missing restaurant ID');
         toast.error('Cannot place order: Missing restaurant information');
+        setIsLoading(false);
         return;
       }
       
-      const orderData = {
+      // Create order data object with proper typing
+      const orderData: any = {
         restaurant_id: restaurantId,
         total_amount: getCartTotal(),
         status: 'placed',
         device_id: deviceId,
       };
       
-      // Only add table_id if it exists and is not null/undefined
-      if (tableId) {
-        orderData['table_id'] = tableId;
+      // Only add table_id if it exists and is not null/undefined/empty string
+      if (tableId && tableId.trim() !== '') {
+        orderData.table_id = tableId;
+        console.log(`Adding table_id: ${tableId} to order`);
       }
       
-      console.log('Order data to insert:', orderData);
+      console.log('Final order data to insert:', orderData);
       
+      // Insert order into database
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert(orderData)
@@ -172,19 +178,25 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       console.log('Order inserted successfully:', order);
       
-      // Ensure all cart items have proper price values as numbers
+      // Prepare order items with proper price handling
       const orderItems = cartItems.map(item => {
-        let price = 0;
+        // Ensure price is properly formatted as a number
+        let price: number;
         
-        // Make sure we have a valid numeric price
         if (item.selectedVariant) {
           price = typeof item.selectedVariant.price === 'string' 
             ? parseFloat(item.selectedVariant.price) 
-            : item.selectedVariant.price;
+            : Number(item.selectedVariant.price);
         } else {
           price = typeof item.price === 'string' 
             ? parseFloat(item.price) 
-            : item.price;
+            : Number(item.price);
+        }
+        
+        // Verify price is valid
+        if (isNaN(price)) {
+          console.error('Invalid price detected for item:', item);
+          price = 0; // Fallback to prevent database errors
         }
         
         return {
@@ -218,7 +230,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       toast.success('Order placed successfully!');
     } catch (error) {
       console.error('Error placing order:', error);
-      toast.error('Failed to place order');
+      toast.error('Failed to place order. Please try again.');
     } finally {
       setIsLoading(false);
     }
