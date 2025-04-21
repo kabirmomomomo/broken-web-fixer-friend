@@ -1,9 +1,8 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import QRCode from "react-qr-code";
-import { QrCode, Eye, Save, LogOut, Settings, KeyRound } from "lucide-react";
+import { QrCode, Eye, Save, LogOut, Settings, KeyRound, List } from "lucide-react";
 import { RestaurantUI } from "@/services/menuService";
 import { useNavigate } from "react-router-dom";
 import RestaurantDetailsDialog from "@/components/menu/RestaurantDetailsDialog";
@@ -110,6 +109,16 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
         >
           <Save className="h-4 w-4" />
           <span className="hidden md:inline ml-2">{isSaving ? "Saving..." : "Save"}</span>
+        </Button>
+
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="h-8 px-2 md:px-3"
+          onClick={() => navigate(`/restaurant/${restaurant.id}/orders`)}
+        >
+          <List className="h-4 w-4" />
+          <span className="hidden md:inline ml-2">Track Orders</span>
         </Button>
       </div>
     </div>
