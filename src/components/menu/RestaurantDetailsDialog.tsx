@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   Dialog,
@@ -45,18 +44,15 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
   children,
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
-  // Store form state locally only for the duration the dialog/sheet is open
   const [formData, setFormData] = React.useState(restaurant);
   const isMobile = useIsMobile();
 
-  // Only update formData when dialog/sheet first opens or on restaurant change
   React.useEffect(() => {
     if (isOpen) {
       setFormData(restaurant);
     }
   }, [restaurant, isOpen]);
 
-  // Select all value in an input/textarea on focus, like add item dialog
   const selectAllOnFocus: React.FocusEventHandler<HTMLInputElement | HTMLTextAreaElement> =
     (e) => {
       e.target.select();
@@ -212,17 +208,13 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
         <SheetContent 
           side="bottom" 
           className="h-[90vh] overflow-y-auto pb-12"
-          // Prevent sheet from stealing focus from inputs
           onPointerDownOutside={(e) => {
-            // Prevent closing when clicking inside form elements
-            const target = e.target as HTMLElement;
-            if (target.closest('form')) {
+            if (e.target && (e.target as HTMLElement).closest('form')) {
               e.preventDefault();
             }
           }}
           onFocusOutside={(e) => {
-            // Prevent focus trap from stealing focus from inputs
-            if (e.target.closest('form')) {
+            if (e.target && (e.target as HTMLElement).closest('form')) {
               e.preventDefault();
             }
           }}
