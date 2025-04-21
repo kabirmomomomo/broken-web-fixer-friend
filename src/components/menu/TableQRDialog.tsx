@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import html2canvas from "html2canvas";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabase";
 
 interface TableQRDialogProps {
   restaurantId: string;
@@ -25,7 +26,38 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
   const [tableCount, setTableCount] = useState(20);
   const { toast } = useToast();
 
-  const handleTableCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const updateTables = async (count: number) => {
+    try {
+      // First, ensure the tables exist in the database
+      for (let i = 1; i <= count; i++) {
+        const { data, error } = await supabase
+          .from('tables')
+          .upsert(
+            {
+              restaurant_id: restaurantId,
+              table_number: i,
+            },
+            {
+              onConflict: 'restaurant_id,table_number'
+            }
+          );
+
+        if (error) {
+          console.error('Error upserting table:', error);
+          toast({
+            variant: "destructive",
+            title: "Error updating tables",
+            description: "Failed to update table information"
+          });
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error updating tables:', error);
+    }
+  };
+
+  const handleTableCountChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newCount = parseInt(e.target.value);
     if (newCount < 1) {
       toast({
@@ -36,7 +68,12 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
       return;
     }
     setTableCount(newCount);
+    await updateTables(newCount);
   };
+
+  useEffect(() => {
+    updateTables(tableCount);
+  }, []);
 
   const downloadQRCode = async (tableId: string) => {
     const element = document.getElementById(`qr-code-${tableId}`);

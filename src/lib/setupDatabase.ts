@@ -1,4 +1,3 @@
-
 import { supabase } from './supabase';
 import { toast } from '@/components/ui/sonner';
 
@@ -91,6 +90,99 @@ export const setupDatabase = async () => {
       if (createItemsError) {
         console.error('Error creating menu_items table:', createItemsError);
         toast.error('Could not create menu_items table. Some features may not work.');
+        return false;
+      }
+    }
+
+    // Create tables table
+    const { data: tablesData, error: tablesError } = await supabase
+      .from('tables')
+      .select('count(*)', { count: 'exact' });
+
+    if (tablesError && tablesError.code === 'PGRST116') {
+      // Table doesn't exist, create it
+      const { error: createTablesError } = await supabase.rpc(
+        'create_table_if_not_exists',
+        {
+          table_name: 'tables',
+          table_definition: `
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+            table_number INTEGER NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+            UNIQUE(restaurant_id, table_number)
+          `
+        }
+      );
+
+      if (createTablesError) {
+        console.error('Error creating tables table:', createTablesError);
+        toast.error('Could not create tables table. Some features may not work.');
+        return false;
+      }
+    }
+
+    // Create orders table with table_id reference
+    const { data: ordersData, error: ordersError } = await supabase
+      .from('orders')
+      .select('count(*)', { count: 'exact' });
+
+    if (ordersError && ordersError.code === 'PGRST116') {
+      // Table doesn't exist, create it
+      const { error: createOrdersError } = await supabase.rpc(
+        'create_table_if_not_exists',
+        {
+          table_name: 'orders',
+          table_definition: `
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+            table_id INTEGER,
+            device_id TEXT NOT NULL,
+            total_amount DECIMAL(10,2) NOT NULL,
+            status TEXT NOT NULL DEFAULT 'placed',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+          `
+        }
+      );
+
+      if (createOrdersError) {
+        console.error('Error creating orders table:', createOrdersError);
+        toast.error('Could not create orders table. Some features may not work.');
+        return false;
+      }
+    }
+
+    // Create order_items table
+    const { data: orderItemsData, error: orderItemsError } = await supabase
+      .from('order_items')
+      .select('count(*)', { count: 'exact' });
+
+    if (orderItemsError && orderItemsError.code === 'PGRST116') {
+      // Table doesn't exist, create it
+      const { error: createOrderItemsError } = await supabase.rpc(
+        'create_table_if_not_exists',
+        {
+          table_name: 'order_items',
+          table_definition: `
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+            item_id UUID,
+            item_name TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            price DECIMAL(10,2) NOT NULL,
+            variant_name TEXT,
+            variant_id UUID,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+          `
+        }
+      );
+
+      if (createOrderItemsError) {
+        console.error('Error creating order_items table:', createOrderItemsError);
+        toast.error('Could not create order_items table. Some features may not work.');
         return false;
       }
     }
