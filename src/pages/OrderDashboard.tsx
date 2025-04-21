@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -68,6 +69,7 @@ const OrderDashboard = () => {
         
       if (error) throw error;
       
+      console.log('Orders fetched:', data);
       setOrders(data || []);
     } catch (err: any) {
       console.error('Error fetching orders:', err);
@@ -149,12 +151,26 @@ const OrderDashboard = () => {
     return order.status === activeTab;
   });
   
+  // Group orders by table_id
   const ordersByTable = filteredOrders.reduce((acc, order) => {
-    const tableId = order.table_id || 'no-table';
-    if (!acc[tableId]) acc[tableId] = [];
-    acc[tableId].push(order);
+    if (order.table_id) {
+      if (!acc[order.table_id]) {
+        acc[order.table_id] = [];
+      }
+      acc[order.table_id].push(order);
+    } else {
+      if (!acc['no-table']) {
+        acc['no-table'] = [];
+      }
+      acc['no-table'].push(order);
+    }
     return acc;
   }, {} as Record<string, Order[]>);
+  
+  // Log the results for debugging
+  console.log('Filtered orders:', filteredOrders);
+  console.log('Orders by table:', ordersByTable);
+  console.log('Table IDs:', Object.keys(ordersByTable));
   
   if (loading) {
     return (
@@ -338,7 +354,7 @@ const OrderDashboard = () => {
         
         <TabsContent value="table">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.entries(ordersByTable).map(([tableId, tableOrders]) => {
+            {Object.keys(ordersByTable).length > 0 && Object.entries(ordersByTable).map(([tableId, tableOrders]) => {
               if (tableId === 'no-table') return null;
               
               const tableTotal = tableOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);

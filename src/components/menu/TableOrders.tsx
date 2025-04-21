@@ -8,9 +8,18 @@ import { Smartphone, Users } from 'lucide-react';
 
 const TableOrders = () => {
   const { tableOrders } = useOrders();
-  const totalAmount = tableOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
-  const totalItems = tableOrders.reduce((sum, order) => 
-    sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
+  // Calculate totals only if there are orders
+  const totalAmount = tableOrders.length > 0 
+    ? tableOrders.reduce((sum, order) => sum + Number(order.total_amount), 0)
+    : 0;
+    
+  const totalItems = tableOrders.length > 0
+    ? tableOrders.reduce((sum, order) => 
+        sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0)
+    : 0;
+  
+  // Debug information
+  console.log('TableOrders component - table orders:', tableOrders);
   
   return (
     <Card className="w-full bg-gradient-to-br from-purple-50 to-white shadow-md border-purple-100">
@@ -26,10 +35,10 @@ const TableOrders = () => {
         </div>
         <div className="text-sm text-muted-foreground flex justify-between mt-2">
           <span className="flex items-center gap-1">
-            <Smartphone className="h-3 w-3" /> {tableOrders.reduce((acc, order) => {
+            <Smartphone className="h-3 w-3" /> {tableOrders.length > 0 ? tableOrders.reduce((acc, order) => {
               if (!acc.includes(order.device_id)) acc.push(order.device_id);
               return acc;
-            }, [] as string[]).length} Devices
+            }, [] as string[]).length : 0} Devices
           </span>
           <span>{totalItems} Items</span>
         </div>
@@ -53,7 +62,7 @@ const TableOrders = () => {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  {order.items.map((item) => (
+                  {order.items && order.items.map((item) => (
                     <div key={item.id} className="flex justify-between text-sm">
                       <span className="text-gray-600">
                         {item.quantity}× {item.item_name}

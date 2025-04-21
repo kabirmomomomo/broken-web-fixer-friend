@@ -47,6 +47,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     fetchOrders();
     
     if (tableId) {
+      console.log('Table ID detected:', tableId);
       fetchTableOrders(tableId);
       subscribeToTableOrders(tableId);
     }
@@ -77,6 +78,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const fetchTableOrders = async (tableId: string) => {
     try {
+      console.log('Fetching orders for table:', tableId);
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -86,15 +88,21 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .eq('table_id', tableId)
         .order('created_at', { ascending: false });
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching table orders:', error);
+        throw error;
+      }
+      
+      console.log('Table orders fetched:', data);
       setTableOrders(data || []);
     } catch (error) {
-      console.error('Error fetching table orders:', error);
+      console.error('Error in fetchTableOrders:', error);
       toast.error('Failed to load table orders');
     }
   };
 
   const subscribeToTableOrders = (tableId: string) => {
+    console.log('Setting up subscription for table:', tableId);
     const channel = supabase
       .channel(`table-orders-${tableId}`)
       .on(
@@ -106,7 +114,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           filter: `table_id=eq.${tableId}`
         },
         async (payload) => {
-          console.log('Orders changed:', payload);
+          console.log('Table orders changed:', payload);
           await fetchTableOrders(tableId);
         }
       )
@@ -195,13 +203,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       
       // If we get here, try with the table_id included (if provided)
-      const orderData = {
+      const orderData: any = {
         restaurant_id: restaurantId,
         total_amount: getCartTotal(),
         status: 'placed',
-        device_id: deviceId,
-        ...(tableId ? { table_id: tableId } : {}) // Only include table_id if it's provided
+        device_id: deviceId
       };
+      
+      // Only add table_id if it exists and is not null/undefined/empty
+      if (tableId) {
+        orderData.table_id = tableId;
+        console.log('Adding table_id to order:', tableId);
+      }
       
       console.log('Order data to insert:', orderData);
       
