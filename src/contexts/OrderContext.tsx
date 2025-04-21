@@ -5,7 +5,7 @@ import { toast } from '@/components/ui/sonner';
 import { useCart } from './CartContext';
 import { getDeviceId } from '@/utils/deviceId';
 import { useSearchParams } from 'react-router-dom';
-import { setupDatabase, handleRelationDoesNotExistError } from '@/lib/setupDatabase';
+import { setupDatabase, handleRelationDoesNotExistError, createRPCFunctions } from '@/lib/setupDatabase';
 
 interface Order {
   id: string;
@@ -46,14 +46,21 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     console.log("OrderProvider initialized with deviceId:", deviceId);
-    // Run database setup once on initialization
+    // Set up the database on initialization
     setupDatabase().then(success => {
       if (success) {
         console.log("Database setup completed successfully");
       }
-      // Fetch orders regardless of setup result, as the tables might already exist
+      
+      // Also ensure the RPC functions exist
+      createRPCFunctions().then(() => {
+        console.log("RPC functions verified");
+      });
+      
+      // Fetch orders
       fetchOrders();
       
+      // If there's a table ID, fetch table orders and set up subscription
       if (tableId) {
         console.log(`Fetching orders for tableId: ${tableId}`);
         fetchTableOrders(tableId);
@@ -185,14 +192,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return;
       }
       
-      // Ensure database setup is complete first to avoid table_id missing issue
+      // Ensure database setup is complete with necessary columns
       const isSetupOk = await setupDatabase();
       if (!isSetupOk) {
-        console.error('Database setup failed, cannot proceed with order');
-        toast.error('Database setup failed. Please try again.');
-        setIsLoading(false);
-        return;
+        console.error('Database setup failed, retrying...');
+        await setupDatabase(); // One more attempt
       }
+      
+      // Also ensure RPC functions exist
+      await createRPCFunctions();
+      
       console.log('Database setup verified, proceeding with order placement');
       
       // Create order data object
@@ -205,8 +214,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       // Only add table_id if it exists and is not null/undefined/empty string
       if (tableId && tableId.trim() !== '' && tableId !== 'undefined' && tableId !== 'null') {
-        orderData.table_id = tableId;
-        console.log(`Adding table_id: ${tableId} to order`);
+        // Convert to string if it's not already
+        orderData.table_id = String(tableId);
+        console.log(`Adding table_id: ${orderData.table_id} to order`);
       }
       
       console.log('Final order data to insert:', orderData);
@@ -223,7 +233,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         if (orderError.message?.includes('table_id')) {
           console.log('Detected table_id column issue. Attempting fix...');
-          await setupDatabase();
+          // Try to add column directly as a last resort
+          const { error: sqlError } = await supabase.rpc(
+            'execute_sql',
+            {
+              sql_query: 'ALTER TABLE orders ADD COLUMN IF NOT EXISTS table_id TEXT;'
+            }
+          );
+          
+          if (sqlError) {
+            console.error('Failed to add table_id column:', sqlError);
+          }
+          
           toast.error('Database schema updated. Please try again.');
           setIsLoading(false);
           return;

@@ -95,13 +95,16 @@ export const setupDatabase = async () => {
       }
     }
 
-    // Check if orders table exists and create it with proper schema including table_id from the start
+    // Orders table setup with forced recreation of table_id column
+    let ordersTableNeedsUpdate = false;
+    
+    // First check if orders table exists
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('count(*)', { count: 'exact' });
-
+      
     if (ordersError && ordersError.code === 'PGRST116') {
-      // Orders table doesn't exist, create it with table_id column immediately
+      // Orders table doesn't exist, create it with table_id column
       console.log('Creating orders table with table_id column...');
       const { error: createOrdersError } = await supabase.rpc(
         'create_table_if_not_exists',
@@ -128,46 +131,65 @@ export const setupDatabase = async () => {
       }
       console.log('Orders table created successfully with table_id column');
     } 
-    else if (!ordersError) {
-      // Orders table exists, explicitly check if table_id column exists and add it if not
+    else {
+      // Orders table exists, check if table_id column exists
       try {
-        console.log('Orders table exists, checking for table_id column...');
-        
-        // First try to select using the table_id column to see if it exists
-        const { error: columnCheckError } = await supabase
-          .from('orders')
-          .select('table_id')
-          .limit(1);
-          
-        if (columnCheckError && columnCheckError.message && 
-            columnCheckError.message.includes("table_id")) {
-          console.log('table_id column missing, adding it now...');
-          
-          // Add the table_id column if it doesn't exist
-          const { error: alterTableError } = await supabase.rpc(
-            'create_column_if_not_exists',
-            {
-              table_name: 'orders',
-              column_name: 'table_id',
-              column_type: 'TEXT'
-            }
-          );
-
-          if (alterTableError) {
-            console.error('Error adding table_id column:', alterTableError);
-            toast.error('Could not update orders table. Table orders may not work.');
-            return false;
+        // Force column check with direct SQL via RPC
+        const { error: columnCheckError } = await supabase.rpc(
+          'add_column_if_not_exists',
+          {
+            p_table: 'orders',
+            p_column: 'table_id',
+            p_type: 'TEXT'
           }
+        );
+        
+        if (columnCheckError) {
+          console.error('Error checking/adding table_id column via RPC:', columnCheckError);
           
-          console.log('Successfully added table_id column to orders table');
-          toast.success('Database schema updated successfully');
-          return true;
+          // Fallback approach: Try to use select to check if column exists
+          const { error: selectError } = await supabase
+            .from('orders')
+            .select('table_id')
+            .limit(1);
+            
+          if (selectError && selectError.message && 
+              selectError.message.includes("table_id")) {
+            console.log('table_id column missing, attempting to add it directly...');
+            ordersTableNeedsUpdate = true;
+          } else {
+            console.log('table_id column appears to exist');
+          }
         } else {
-          console.log('table_id column already exists in orders table');
+          console.log('table_id column check/add via RPC completed successfully');
         }
       } catch (err) {
-        console.error('Error checking/adding table_id column:', err);
-        toast.error('Could not verify orders table structure. Some features may not work.');
+        console.error('Error in table_id column check process:', err);
+      }
+    }
+
+    // If we determined the orders table needs the column added:
+    if (ordersTableNeedsUpdate) {
+      try {
+        console.log('Attempting to add table_id column...');
+        
+        // Try SQL alter table via RPC
+        const { error: alterError } = await supabase.rpc(
+          'execute_sql',
+          {
+            sql_query: 'ALTER TABLE orders ADD COLUMN IF NOT EXISTS table_id TEXT;'
+          }
+        );
+        
+        if (alterError) {
+          console.error('Error adding table_id column via SQL:', alterError);
+          toast.error('Could not update orders table structure. Some features may not work.');
+          return false;
+        }
+        
+        console.log('table_id column added successfully');
+      } catch (err) {
+        console.error('Exception during table_id column addition:', err);
         return false;
       }
     }
@@ -221,16 +243,82 @@ export const handleRelationDoesNotExistError = async (error: any): Promise<boole
   return false;
 };
 
-// Supabase function to create a column if it doesn't exist
-// Note: You may need to create this function in your Supabase project
+// These functions will be needed for the RPC calls above
+export const createRPCFunctions = async () => {
+  try {
+    // Create the add_column_if_not_exists function if it doesn't exist
+    const { error: createColumnFnError } = await supabase.rpc(
+      'create_function_if_not_exists',
+      {
+        function_name: 'add_column_if_not_exists',
+        function_definition: `
+          CREATE OR REPLACE FUNCTION add_column_if_not_exists(
+            p_table text,
+            p_column text,
+            p_type text
+          ) 
+          RETURNS void AS $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT FROM information_schema.columns 
+              WHERE table_name = p_table AND column_name = p_column
+            ) THEN
+              EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', 
+                           p_table, p_column, p_type);
+            END IF;
+          END;
+          $$ LANGUAGE plpgsql SECURITY DEFINER;
+        `
+      }
+    );
+
+    if (createColumnFnError) {
+      console.error('Error creating add_column_if_not_exists function:', createColumnFnError);
+    }
+
+    // Create the execute_sql function if it doesn't exist
+    const { error: createSqlFnError } = await supabase.rpc(
+      'create_function_if_not_exists',
+      {
+        function_name: 'execute_sql',
+        function_definition: `
+          CREATE OR REPLACE FUNCTION execute_sql(sql_query text) 
+          RETURNS void AS $$
+          BEGIN
+            EXECUTE sql_query;
+          END;
+          $$ LANGUAGE plpgsql SECURITY DEFINER;
+        `
+      }
+    );
+
+    if (createSqlFnError) {
+      console.error('Error creating execute_sql function:', createSqlFnError);
+    }
+
+    return !createColumnFnError && !createSqlFnError;
+  } catch (error) {
+    console.error('Error creating RPC functions:', error);
+    return false;
+  }
+};
+
+// Attempt to create necessary RPC functions on load
+createRPCFunctions().then(success => {
+  if (success) {
+    console.log('RPC functions created or already exist');
+  }
+});
+
+// Helper function for column creation
 export const createColumnIfNotExists = async (tableName: string, columnName: string, dataType: string) => {
   try {
     const { data, error } = await supabase.rpc(
-      'create_column_if_not_exists',
+      'add_column_if_not_exists',
       {
-        table_name: tableName,
-        column_name: columnName,
-        column_type: dataType
+        p_table: tableName,
+        p_column: columnName,
+        p_type: dataType
       }
     );
     

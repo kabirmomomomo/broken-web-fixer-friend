@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
@@ -30,8 +31,8 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
   console.log("Cart component initialized with:", { 
     menuId, 
     tableIdFromProps: tableId, 
-    tableIdFromUrl: tableIdFromUrl,
-    effectiveTableId: effectiveTableId
+    tableIdFromUrl, 
+    effectiveTableId
   });
 
   const handleCheckout = async () => {
@@ -53,7 +54,9 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
         return;
       }
       
-      await placeOrder(menuId, effectiveTableId || undefined);
+      // Pass the tableId as a string (not undefined object) to the placeOrder function
+      const tableIdToUse = effectiveTableId ? String(effectiveTableId) : undefined;
+      await placeOrder(menuId, tableIdToUse);
       setOpen(false);
     } catch (error) {
       console.error('Error during checkout:', error);
@@ -61,7 +64,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
     }
   };
 
-  const displayTableId = effectiveTableId ? effectiveTableId.replace(/\D/g, '') : undefined;
+  const displayTableId = effectiveTableId ? String(effectiveTableId).replace(/\D/g, '') : undefined;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
