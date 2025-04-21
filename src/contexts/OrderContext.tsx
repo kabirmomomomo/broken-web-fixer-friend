@@ -5,6 +5,7 @@ import { toast } from '@/components/ui/sonner';
 import { useCart } from './CartContext';
 import { getDeviceId } from '@/utils/deviceId';
 import { useSearchParams } from 'react-router-dom';
+import { setupDatabase, handleRelationDoesNotExistError } from '@/lib/setupDatabase';
 
 interface Order {
   id: string;
@@ -69,7 +70,17 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .eq('device_id', deviceId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // If we get a relation does not exist error, try to set up the database
+        const isSetupAttempted = await handleRelationDoesNotExistError(error);
+        if (isSetupAttempted) {
+          // Retry the fetch after setup
+          setTimeout(() => fetchOrders(), 1000);
+          return;
+        }
+        throw error;
+      }
+      
       setOrders(deviceOrders || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -90,6 +101,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .order('created_at', { ascending: false });
         
       if (error) {
+        // If we get a relation does not exist error, try to set up the database
+        const isSetupAttempted = await handleRelationDoesNotExistError(error);
+        if (isSetupAttempted) {
+          // Retry the fetch after setup
+          setTimeout(() => fetchTableOrders(tableId), 1000);
+          return;
+        }
         console.error('Error fetching table orders:', error);
         throw error;
       }
@@ -160,6 +178,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return;
       }
       
+      // Try to ensure the database tables exist first
+      await setupDatabase();
+      
       // Create order data object
       const orderData: any = {
         restaurant_id: restaurantId,
@@ -185,6 +206,17 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (orderError) {
         console.error('Error inserting order:', orderError);
+        // Try to create the missing column if that's the issue
+        if (orderError.message?.includes('table_id')) {
+          console.log('Attempting to fix table_id column issue...');
+          const isColumnAdded = await setupDatabase();
+          if (isColumnAdded) {
+            // Retry the order placement
+            toast.info('Updating database schema, please try again');
+            setIsLoading(false);
+            return;
+          }
+        }
         throw new Error(`Database error: ${orderError.message}`);
       }
 

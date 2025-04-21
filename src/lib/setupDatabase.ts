@@ -95,6 +95,88 @@ export const setupDatabase = async () => {
       }
     }
 
+    // Check if orders table exists
+    const { data: ordersData, error: ordersError } = await supabase
+      .from('orders')
+      .select('count(*)', { count: 'exact' });
+
+    if (ordersError && ordersError.code === 'PGRST116') {
+      // Orders table doesn't exist, create it with table_id column
+      const { error: createOrdersError } = await supabase.rpc(
+        'create_table_if_not_exists',
+        {
+          table_name: 'orders',
+          table_definition: `
+            id UUID PRIMARY KEY,
+            restaurant_id UUID NOT NULL,
+            table_id TEXT,
+            device_id TEXT,
+            user_id UUID,
+            status TEXT DEFAULT 'placed',
+            total_amount NUMERIC NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+          `
+        }
+      );
+
+      if (createOrdersError) {
+        console.error('Error creating orders table:', createOrdersError);
+        toast.error('Could not create orders table. Some features may not work.');
+        return false;
+      }
+    } else if (!ordersError) {
+      // Orders table exists, check if table_id column exists
+      try {
+        const { error: alterTableError } = await supabase.rpc(
+          'create_column_if_not_exists',
+          {
+            table_name: 'orders',
+            column_name: 'table_id',
+            column_type: 'TEXT'
+          }
+        );
+
+        if (alterTableError) {
+          console.error('Error adding table_id column:', alterTableError);
+        }
+      } catch (err) {
+        console.error('Error checking/adding table_id column:', err);
+      }
+    }
+
+    // Check if order_items table exists
+    const { data: orderItemsData, error: orderItemsError } = await supabase
+      .from('order_items')
+      .select('count(*)', { count: 'exact' });
+
+    if (orderItemsError && orderItemsError.code === 'PGRST116') {
+      // Order_items table doesn't exist, create it
+      const { error: createOrderItemsError } = await supabase.rpc(
+        'create_table_if_not_exists',
+        {
+          table_name: 'order_items',
+          table_definition: `
+            id UUID PRIMARY KEY,
+            order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+            item_id TEXT,
+            item_name TEXT NOT NULL,
+            variant_id TEXT,
+            variant_name TEXT,
+            quantity INTEGER NOT NULL,
+            price NUMERIC NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+          `
+        }
+      );
+
+      if (createOrderItemsError) {
+        console.error('Error creating order_items table:', createOrderItemsError);
+        toast.error('Could not create order_items table. Some features may not work.');
+        return false;
+      }
+    }
+
     console.log('Database tables setup complete!');
     return true;
   } catch (error) {
@@ -110,4 +192,29 @@ export const handleRelationDoesNotExistError = async (error: any): Promise<boole
     return await setupDatabase();
   }
   return false;
+};
+
+// Supabase function to create a column if it doesn't exist
+// Note: You may need to create this function in your Supabase project
+export const createColumnIfNotExists = async (tableName: string, columnName: string, dataType: string) => {
+  try {
+    const { data, error } = await supabase.rpc(
+      'create_column_if_not_exists',
+      {
+        table_name: tableName,
+        column_name: columnName,
+        column_type: dataType
+      }
+    );
+    
+    if (error) {
+      console.error(`Error creating ${columnName} column in ${tableName}:`, error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error(`Exception creating ${columnName} column in ${tableName}:`, error);
+    return false;
+  }
 };
