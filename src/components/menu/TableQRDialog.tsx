@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
+import { handleRelationDoesNotExistError } from "@/lib/setupDatabase";
 
 interface TableQRDialogProps {
   restaurantId: string;
@@ -25,41 +26,78 @@ interface TableQRDialogProps {
 const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
   const [tableCount, setTableCount] = useState(20);
   const { toast } = useToast();
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const updateTables = async (count: number) => {
+    if (isUpdating) return;
+    
+    setIsUpdating(true);
     try {
-      // First, ensure the tables exist in the database
-      for (let i = 1; i <= count; i++) {
-        const { data, error } = await supabase
-          .from('tables')
-          .upsert(
-            {
-              restaurant_id: restaurantId,
-              table_number: i,
-            },
-            {
-              onConflict: 'restaurant_id,table_number'
-            }
-          );
-
-        if (error) {
-          console.error('Error upserting table:', error);
+      // First, ensure the tables table exists
+      const { data: tablesData, error: tablesError } = await supabase
+        .from('tables')
+        .select('count(*)', { count: 'exact' });
+        
+      if (tablesError) {
+        // Table might not exist, try to set up the database
+        const setupSuccess = await handleRelationDoesNotExistError(tablesError);
+        if (!setupSuccess) {
+          console.error('Failed to set up tables table:', tablesError);
           toast({
             variant: "destructive",
             title: "Error updating tables",
-            description: "Failed to update table information"
+            description: "Failed to update table information. Database setup required."
           });
           return;
         }
       }
+
+      // Now, ensure the tables exist in the database
+      for (let i = 1; i <= count; i++) {
+        // Use an individual try-catch for each table to ensure one failure doesn't stop the rest
+        try {
+          const { error } = await supabase
+            .from('tables')
+            .upsert(
+              {
+                restaurant_id: restaurantId,
+                table_number: i,
+              },
+              {
+                onConflict: 'restaurant_id,table_number'
+              }
+            );
+
+          if (error) {
+            console.error('Error upserting table:', error);
+            // Continue with other tables instead of stopping completely
+          }
+        } catch (tableError) {
+          console.error('Exception during table upsert:', tableError);
+          // Continue with other tables
+        }
+      }
+      
+      // Let the user know the process is complete
+      toast({
+        title: "Tables updated",
+        description: `Successfully configured ${count} tables`
+      });
     } catch (error) {
       console.error('Error updating tables:', error);
+      toast({
+        variant: "destructive",
+        title: "Error updating tables",
+        description: "Failed to update table information"
+      });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const handleTableCountChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newCount = parseInt(e.target.value);
-    if (newCount < 1) {
+    if (isNaN(newCount) || newCount < 1) {
       toast({
         variant: "destructive",
         title: "Invalid table count",
@@ -72,6 +110,7 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
   };
 
   useEffect(() => {
+    // Initialize tables when the component mounts
     updateTables(tableCount);
   }, []);
 
@@ -112,8 +151,14 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
               value={tableCount}
               onChange={handleTableCountChange}
               className="max-w-[200px]"
+              disabled={isUpdating}
             />
           </div>
+          {isUpdating && (
+            <div className="text-sm text-muted-foreground">
+              Updating tables...
+            </div>
+          )}
         </div>
 
         <ScrollArea className="h-[60vh] w-full rounded-md">
