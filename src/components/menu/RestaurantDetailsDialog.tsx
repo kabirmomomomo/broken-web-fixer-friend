@@ -171,7 +171,18 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
         <SheetTrigger asChild>
           {children}
         </SheetTrigger>
-        <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
+        <SheetContent 
+          side="bottom" 
+          className="h-[90vh] overflow-y-auto"
+          // Add these styles to make the sheet stable and prevent it from redrawing on input
+          style={{
+            position: 'fixed',
+            bottom: '0',
+            left: '0',
+            right: '0',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+          }}
+        >
           <SheetHeader className="mb-4">
             <SheetTitle>Edit Restaurant Details</SheetTitle>
             <SheetDescription>
