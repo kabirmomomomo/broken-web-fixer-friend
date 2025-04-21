@@ -288,7 +288,7 @@ const OrderDashboard = () => {
                             {order.table_id ? (
                               <div className="flex items-center">
                                 <TableIcon className="h-4 w-4 mr-1 text-purple-600" />
-                                {order.table_id}
+                                Table {order.table_id}
                               </div>
                             ) : (
                               <div className="flex items-center">
