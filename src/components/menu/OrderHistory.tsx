@@ -11,7 +11,7 @@ interface OrderHistoryProps {
 }
 
 const OrderHistory: React.FC<OrderHistoryProps> = ({ tableId }) => {
-  const { orders, tableOrders } = useOrders();
+  const { orders } = useOrders();
   const location = window.location.pathname;
   const menuId = location.split('/menu-preview/')[1];
 
@@ -26,11 +26,6 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ tableId }) => {
           className="fixed bottom-8 left-8 h-16 w-16 rounded-full shadow-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border-none"
         >
           <ClipboardList className="h-6 w-6" />
-          {tableId && tableOrders.length > 0 && (
-            <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
-              {tableOrders.length}
-            </span>
-          )}
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-full sm:max-w-md overflow-auto">
