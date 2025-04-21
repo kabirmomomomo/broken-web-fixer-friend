@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/sonner';
 import { useCart } from './CartContext';
 import { getDeviceId } from '@/utils/deviceId';
+import { useSearchParams } from 'react-router-dom';
 
 interface Order {
   id: string;
@@ -38,45 +39,62 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [tableOrders, setTableOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { cartItems, getCartTotal, clearCart } = useCart();
+  const [searchParams] = useSearchParams();
   const deviceId = getDeviceId();
+  const tableId = searchParams.get('table');
 
   useEffect(() => {
     fetchOrders();
     
-    // Get table_id from URL if it exists
-    const url = window.location.pathname;
-    const tableIdMatch = url.match(/\/table\/([^\/]+)/);
-    const tableId = tableIdMatch ? tableIdMatch[1] : null;
-    
     if (tableId) {
+      fetchTableOrders(tableId);
       subscribeToTableOrders(tableId);
     }
     
     return () => {
       supabase.removeAllChannels();
     };
-  }, []);
+  }, [tableId]);
 
-  const subscribeToTableOrders = async (tableId: string) => {
-    console.log("Subscribing to table orders:", tableId);
-    
-    // Initial fetch of all table orders
-    const { data: initialOrders, error: initialError } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        items:order_items(*)
-      `)
-      .eq('table_id', tableId)
-      .order('created_at', { ascending: false });
-    
-    if (initialError) {
-      console.error('Error fetching initial table orders:', initialError);
-    } else {
-      setTableOrders(initialOrders || []);
+  const fetchOrders = async () => {
+    try {
+      const { data: deviceOrders, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          items:order_items(*)
+        `)
+        .eq('device_id', deviceId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOrders(deviceOrders || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast.error('Failed to load orders');
     }
-    
-    // Subscribe to real-time updates
+  };
+
+  const fetchTableOrders = async (tableId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          items:order_items(*)
+        `)
+        .eq('table_id', tableId)
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      setTableOrders(data || []);
+    } catch (error) {
+      console.error('Error fetching table orders:', error);
+      toast.error('Failed to load table orders');
+    }
+  };
+
+  const subscribeToTableOrders = (tableId: string) => {
     const channel = supabase
       .channel(`table-orders-${tableId}`)
       .on(
@@ -89,52 +107,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         },
         async (payload) => {
           console.log('Orders changed:', payload);
-          // Refetch all orders for this table to get the latest state
           await fetchTableOrders(tableId);
         }
       )
       .subscribe((status) => {
-        console.log('Subscription status:', status);
+        console.log('Table orders subscription status:', status);
       });
       
     return channel;
-  };
-
-  const fetchTableOrders = async (tableId: string) => {
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        items:order_items(*)
-      `)
-      .eq('table_id', tableId)
-      .order('created_at', { ascending: false });
-      
-    if (error) {
-      console.error('Error fetching table orders:', error);
-      return;
-    }
-    
-    setTableOrders(data || []);
-  };
-
-  const fetchOrders = async () => {
-    try {
-      const { data: orders, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          items:order_items(*)
-        `)
-        .eq('device_id', deviceId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setOrders(orders || []);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      toast.error('Failed to load orders');
-    }
   };
 
   const placeOrder = async (restaurantId: string, tableId?: string) => {
@@ -145,14 +125,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setIsLoading(true);
     try {
-      // Get table_id from URL if not provided
-      let finalTableId = tableId;
-      if (!finalTableId) {
-        const url = window.location.pathname;
-        const tableIdMatch = url.match(/\/table\/([^\/]+)/);
-        finalTableId = tableIdMatch ? tableIdMatch[1] : undefined;
-      }
-      
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -160,7 +132,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           total_amount: getCartTotal(),
           status: 'placed',
           device_id: deviceId,
-          table_id: finalTableId
+          table_id: tableId
         })
         .select()
         .single();
@@ -185,12 +157,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       clearCart();
       await fetchOrders();
-      
-      // Also fetch table orders if we have a table ID
-      if (finalTableId) {
-        await fetchTableOrders(finalTableId);
+      if (tableId) {
+        await fetchTableOrders(tableId);
       }
-      
       toast.success('Order placed successfully!');
     } catch (error) {
       console.error('Error placing order:', error);
