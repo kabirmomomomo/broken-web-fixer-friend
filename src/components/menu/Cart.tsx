@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
@@ -12,9 +11,13 @@ import {
 } from "@/components/ui/sheet";
 import { useOrders } from '@/contexts/OrderContext';
 import { useParams } from 'react-router-dom';
-import { toast } from '@/components/ui/sonner';  // Replace react-toastify with sonner
+import { toast } from '@/components/ui/sonner';
 
-const Cart: React.FC = () => {
+interface CartProps {
+  tableId?: string;
+}
+
+const Cart: React.FC<CartProps> = ({ tableId }) => {
   const [open, setOpen] = useState(false);
   const { menuId } = useParams();
   const { cartItems, removeFromCart, updateQuantity, getCartTotal, getItemCount, clearCart } = useCart();
@@ -25,7 +28,7 @@ const Cart: React.FC = () => {
       toast.error('Restaurant ID not found');
       return;
     }
-    await placeOrder(menuId);
+    await placeOrder(menuId, tableId);
     setOpen(false);
   };
 
@@ -49,7 +52,7 @@ const Cart: React.FC = () => {
         <SheetHeader>
           <SheetTitle className="text-xl flex items-center gap-2 text-purple-900">
             <ShoppingCart className="h-5 w-5" />
-            Your Cart
+            Your Cart {tableId && <span className="text-sm font-normal">(Table {tableId})</span>}
           </SheetTitle>
         </SheetHeader>
         
@@ -138,7 +141,7 @@ const Cart: React.FC = () => {
                     onClick={handleCheckout}
                     disabled={isLoading || cartItems.length === 0}
                   >
-                    {isLoading ? 'Placing Order...' : 'Checkout'}
+                    {isLoading ? 'Placing Order...' : `Checkout ${tableId ? `(Table ${tableId})` : ''}`}
                   </Button>
                   <Button 
                     variant="outline" 

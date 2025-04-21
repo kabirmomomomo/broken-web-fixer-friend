@@ -1,6 +1,7 @@
+
 import React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getRestaurantById } from "@/services/menuService";
 import { setupDatabase, handleRelationDoesNotExistError } from "@/lib/setupDatabase";
@@ -23,6 +24,7 @@ import { Toaster } from "@/components/ui/toaster";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import { OrderProvider } from '@/contexts/OrderContext';
 import OrderHistory from '@/components/menu/OrderHistory';
+import TableOrders from '@/components/menu/TableOrders';
 
 // Sample data as fallback when API call fails or is loading
 const sampleData: Restaurant = {
@@ -53,10 +55,13 @@ const sampleData: Restaurant = {
 
 const MenuPreview = () => {
   const { menuId } = useParams<{ menuId: string }>();
+  const [searchParams] = useSearchParams();
+  const tableId = searchParams.get('table');
   const [attemptedDatabaseSetup, setAttemptedDatabaseSetup] = useState(false);
   const [isDbError, setIsDbError] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [showTableOrders, setShowTableOrders] = useState(false);
   const isMobile = useIsMobile();
 
   // Optimize query with better caching and error handling
@@ -174,9 +179,21 @@ const MenuPreview = () => {
   }, [isDbError, attemptedDatabaseSetup, refetch]);
   
   // Memoize QR code value
-  const qrCodeValue = useMemo(() => 
-    restaurantToDisplay ? `${window.location.origin}/menu-preview/${restaurantToDisplay.id}` : '',
-  [restaurantToDisplay]);
+  const qrCodeValue = useMemo(() => {
+    if (!restaurantToDisplay) return '';
+    
+    // Include table ID in QR code if available
+    const baseUrl = `${window.location.origin}/menu-preview/${restaurantToDisplay.id}`;
+    return tableId ? `${baseUrl}?table=${tableId}` : baseUrl;
+  }, [restaurantToDisplay, tableId]);
+  
+  // Toggle table orders visibility
+  const toggleTableOrders = useCallback(() => {
+    setShowTableOrders(prev => !prev);
+  }, []);
+
+  // Check if we have a table ID to enable table features
+  const isTableContext = !!tableId;
   
   // Show loading state
   if (isLoading) {
@@ -229,6 +246,12 @@ const MenuPreview = () => {
           <div className={isMobile ? "px-2" : "px-6"}>
             <SearchBar onSearch={handleSearch} />
             
+            {isTableContext && showTableOrders && (
+              <div className="mb-6">
+                <TableOrders />
+              </div>
+            )}
+            
             <MenuList 
               categories={restaurantToDisplay.categories} 
               openCategories={openCategories} 
@@ -239,8 +262,8 @@ const MenuPreview = () => {
           
           <MenuFooter />
         </div>
-        <Cart />
-        <OrderHistory />
+        <Cart tableId={tableId || undefined} />
+        <OrderHistory tableId={tableId || undefined} showTableToggle={isTableContext} onToggleTableOrders={toggleTableOrders} />
         <Toaster />
       </OrderProvider>
     </CartProvider>

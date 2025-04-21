@@ -1,12 +1,25 @@
+
 import React from 'react';
 import { useOrders } from '@/contexts/OrderContext';
 import { format } from 'date-fns';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, Users } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
-const OrderHistory = () => {
-  const { orders } = useOrders();
+interface OrderHistoryProps {
+  tableId?: string;
+  showTableToggle?: boolean;
+  onToggleTableOrders?: () => void;
+}
+
+const OrderHistory: React.FC<OrderHistoryProps> = ({ 
+  tableId, 
+  showTableToggle = false,
+  onToggleTableOrders
+}) => {
+  const { orders, tableOrders } = useOrders();
   const location = window.location.pathname;
   const menuId = location.split('/menu-preview/')[1];
 
@@ -21,13 +34,29 @@ const OrderHistory = () => {
           className="fixed bottom-8 left-8 h-16 w-16 rounded-full shadow-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border-none"
         >
           <ClipboardList className="h-6 w-6" />
+          {tableId && tableOrders.length > 0 && (
+            <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+              {tableOrders.length}
+            </span>
+          )}
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-full sm:max-w-md overflow-auto">
-        <SheetHeader>
-          <SheetTitle>Order History</SheetTitle>
+        <SheetHeader className="mb-4">
+          <div className="flex justify-between items-center">
+            <SheetTitle>Order History</SheetTitle>
+            {showTableToggle && tableId && (
+              <div className="flex items-center space-x-2">
+                <Switch id="table-view" onCheckedChange={onToggleTableOrders} />
+                <Label htmlFor="table-view" className="flex items-center space-x-1">
+                  <Users className="h-4 w-4" /> 
+                  <span>Table View</span>
+                </Label>
+              </div>
+            )}
+          </div>
         </SheetHeader>
-        <div className="mt-6 space-y-4">
+        <div className="mt-2 space-y-4">
           {orders.length === 0 ? (
             <p className="text-center text-muted-foreground">No orders yet</p>
           ) : (
@@ -42,7 +71,14 @@ const OrderHistory = () => {
                       <p className="text-sm text-muted-foreground">
                         {format(new Date(order.created_at), 'MMM d, yyyy h:mm a')}
                       </p>
-                      <p className="font-medium">Order #{order.id.slice(0, 8)}</p>
+                      <p className="font-medium">
+                        Order #{order.id.slice(0, 8)}
+                        {order.table_id && (
+                          <span className="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                            Table {order.table_id}
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
                       {order.status}
