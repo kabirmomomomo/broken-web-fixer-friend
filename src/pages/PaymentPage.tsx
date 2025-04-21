@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -13,15 +13,17 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from '@/components/ui/accordion';
+import { useOrders } from '@/contexts/OrderContext';
 
 const PaymentPage = () => {
   const { menuId } = useParams();
   const [searchParams] = useSearchParams();
   const tableId = searchParams.get('table');
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
+  const { tableOrders } = useOrders();
 
   // Log parameters for debugging
-  console.log('PaymentPage parameters:', { menuId, tableId });
+  console.log('PaymentPage parameters:', { menuId, tableId, tableOrders });
 
   const { data: restaurant, isLoading } = useQuery({
     queryKey: ['restaurant-payment', menuId],
@@ -51,7 +53,7 @@ const PaymentPage = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-50 to-white p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-center text-2xl text-purple-900">Payment Not Configured</CardTitle>
+            <CardTitle className="text-center text-xl text-purple-900">Payment Not Configured</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground">
@@ -98,7 +100,7 @@ const PaymentPage = () => {
       </div>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center text-2xl text-purple-900">Complete Payment</CardTitle>
+          <CardTitle className="text-center text-xl text-purple-900">Complete Payment</CardTitle>
         </CardHeader>
         <CardContent className="text-center space-y-6">
           {restaurant.payment_qr_code && (

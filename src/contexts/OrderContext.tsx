@@ -44,6 +44,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const tableId = searchParams.get('table');
 
   useEffect(() => {
+    console.log("OrderProvider initialized with deviceId:", deviceId);
     fetchOrders();
     
     if (tableId) {
@@ -134,30 +135,41 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsLoading(true);
     try {
       // Debug logs to track input data
-      console.log('Order details:');
+      console.log('Order placement started:');
       console.log('- Restaurant ID:', restaurantId);
       console.log('- Table ID:', tableId);
       console.log('- Device ID:', deviceId);
       console.log('- Cart items:', cartItems);
       
       // Validate restaurant ID
-      if (!restaurantId) {
-        console.error('Missing restaurant ID');
-        toast.error('Cannot place order: Missing restaurant information');
+      if (!restaurantId || restaurantId === 'undefined' || restaurantId === 'null') {
+        console.error('Invalid restaurant ID:', restaurantId);
+        toast.error('Cannot place order: Invalid restaurant information');
+        setIsLoading(false);
+        return;
+      }
+
+      const cartTotal = getCartTotal();
+      console.log('- Cart total:', cartTotal);
+      
+      // Validate cart total
+      if (isNaN(cartTotal) || cartTotal <= 0) {
+        console.error('Invalid cart total:', cartTotal);
+        toast.error('Cannot place order: Invalid cart total');
         setIsLoading(false);
         return;
       }
       
-      // Create order data object with proper typing
+      // Create order data object
       const orderData: any = {
         restaurant_id: restaurantId,
-        total_amount: getCartTotal(),
+        total_amount: cartTotal,
         status: 'placed',
         device_id: deviceId,
       };
       
       // Only add table_id if it exists and is not null/undefined/empty string
-      if (tableId && tableId.trim() !== '') {
+      if (tableId && tableId.trim() !== '' && tableId !== 'undefined' && tableId !== 'null') {
         orderData.table_id = tableId;
         console.log(`Adding table_id: ${tableId} to order`);
       }
@@ -173,7 +185,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (orderError) {
         console.error('Error inserting order:', orderError);
-        throw orderError;
+        throw new Error(`Database error: ${orderError.message}`);
+      }
+
+      if (!order || !order.id) {
+        console.error('No order ID returned from database');
+        throw new Error('Failed to create order: No order ID returned');
       }
 
       console.log('Order inserted successfully:', order);
@@ -201,7 +218,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         return {
           order_id: order.id,
-          item_id: item.id,
+          item_id: item.id || 'unknown',
           item_name: item.name,
           quantity: item.quantity,
           price: price,
@@ -218,7 +235,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (itemsError) {
         console.error('Error inserting order items:', itemsError);
-        throw itemsError;
+        throw new Error(`Database error: ${itemsError.message}`);
       }
 
       console.log('Order items inserted successfully');
@@ -228,9 +245,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         await fetchTableOrders(tableId);
       }
       toast.success('Order placed successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error placing order:', error);
-      toast.error('Failed to place order. Please try again.');
+      toast.error(`Failed to place order: ${error.message || 'Please try again'}`);
     } finally {
       setIsLoading(false);
     }

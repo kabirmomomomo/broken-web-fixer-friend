@@ -35,6 +35,14 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
       console.log('Checkout initiated:');
       console.log('- menuId:', menuId);
       console.log('- tableId:', tableId || 'none');
+      console.log('- cart items:', cartItems);
+      console.log('- cart total:', getCartTotal());
+      
+      // Ensure the restaurant ID is valid
+      if (!menuId || menuId === 'undefined' || menuId === 'null') {
+        toast.error('Invalid restaurant ID');
+        return;
+      }
       
       await placeOrder(menuId, tableId);
       setOpen(false);
