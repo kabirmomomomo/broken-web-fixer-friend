@@ -33,13 +33,15 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
     
     setIsUpdating(true);
     try {
-      // First, ensure the tables table exists
+      // First, check if the tables table exists by fetching a single row
       const { data: tablesData, error: tablesError } = await supabase
         .from('tables')
-        .select('count(*)', { count: 'exact' });
+        .select('*')
+        .limit(1);
         
       if (tablesError) {
         // Table might not exist, try to set up the database
+        console.log('Error checking tables table:', tablesError);
         const setupSuccess = await handleRelationDoesNotExistError(tablesError);
         if (!setupSuccess) {
           console.error('Failed to set up tables table:', tablesError);
@@ -48,6 +50,7 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
             title: "Error updating tables",
             description: "Failed to update table information. Database setup required."
           });
+          setIsUpdating(false);
           return;
         }
       }
