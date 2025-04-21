@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from '@/components/ui/badge';
+import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Smartphone, User, Table as TableIcon, Trash2 } from 'lucide-react';
@@ -66,6 +67,7 @@ const OrderDashboard = () => {
         
       if (error) throw error;
       
+      console.log('Orders fetched:', data);
       setOrders(data || []);
     } catch (err: any) {
       console.error('Error fetching orders:', err);
@@ -136,6 +138,7 @@ const OrderDashboard = () => {
   
   const getTableNumber = (tableId: string | undefined) => {
     if (!tableId) return null;
+    // Extract the numeric part from the table ID (e.g., "table-4" -> "4")
     const number = tableId.match(/\d+/);
     return number ? number[0] : tableId;
   };
@@ -147,9 +150,13 @@ const OrderDashboard = () => {
   });
   
   const ordersByTable = filteredOrders.reduce((acc, order) => {
-    const tableId = order.table_id || 'no-table';
-    if (!acc[tableId]) acc[tableId] = [];
-    acc[tableId].push(order);
+    if (!order.table_id) {
+      if (!acc['no-table']) acc['no-table'] = [];
+      acc['no-table'].push(order);
+    } else {
+      if (!acc[order.table_id]) acc[order.table_id] = [];
+      acc[order.table_id].push(order);
+    }
     return acc;
   }, {} as Record<string, Order[]>);
   
@@ -343,7 +350,7 @@ const OrderDashboard = () => {
                           size="sm"
                           className="h-7 px-2 text-destructive hover:text-destructive"
                           onClick={() => {
-                            if (window.confirm(`Are you sure you want to delete all orders from Table ${tableId}?`)) {
+                            if (window.confirm(`Are you sure you want to delete all orders from Table ${tableNumber}?`)) {
                               deleteTableOrders(tableId);
                             }
                           }}

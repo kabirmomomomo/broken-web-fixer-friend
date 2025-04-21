@@ -1,13 +1,17 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { format } from 'date-fns';
 import { useOrders } from '@/contexts/OrderContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Smartphone, Users } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
 const TableOrders = () => {
   const { tableOrders } = useOrders();
+  const [searchParams] = useSearchParams();
+  const tableId = searchParams.get('table');
+  
   const totalAmount = tableOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
   const totalItems = tableOrders.reduce((sum, order) => 
     sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
@@ -17,13 +21,19 @@ const TableOrders = () => {
     return number ? number[0] : tableId;
   };
   
+  // Debug log to check for tableOrders data
+  useEffect(() => {
+    console.log('TableOrders component - Current tableOrders:', tableOrders);
+    console.log('Current tableId from URL:', tableId);
+  }, [tableOrders, tableId]);
+  
   return (
     <Card className="w-full bg-gradient-to-br from-purple-50 to-white shadow-md border-purple-100">
       <CardHeader className="bg-gradient-to-r from-purple-100 to-indigo-50 rounded-t-lg">
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg font-bold text-purple-900 flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Table {tableOrders[0]?.table_id ? getTableNumber(tableOrders[0].table_id) : ''} Orders
+            Table {tableId ? getTableNumber(tableId) : ''} Orders
           </CardTitle>
           <Badge variant="outline" className="bg-white text-purple-900 border-purple-200">
             {tableOrders.length} {tableOrders.length === 1 ? 'Order' : 'Orders'}

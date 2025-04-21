@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/sonner';
@@ -47,6 +46,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     fetchOrders();
     
     if (tableId) {
+      console.log(`Fetching orders for tableId: ${tableId}`);
       fetchTableOrders(tableId);
       subscribeToTableOrders(tableId);
     }
@@ -77,6 +77,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const fetchTableOrders = async (tableId: string) => {
     try {
+      console.log(`Executing fetchTableOrders with tableId: ${tableId}`);
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -86,7 +87,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .eq('table_id', tableId)
         .order('created_at', { ascending: false });
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching table orders:', error);
+        throw error;
+      }
+      
+      console.log(`Table orders fetched for table ${tableId}:`, data);
       setTableOrders(data || []);
     } catch (error) {
       console.error('Error fetching table orders:', error);
@@ -95,6 +101,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const subscribeToTableOrders = (tableId: string) => {
+    console.log(`Setting up realtime subscription for table ${tableId}`);
     const channel = supabase
       .channel(`table-orders-${tableId}`)
       .on(
@@ -106,7 +113,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           filter: `table_id=eq.${tableId}`
         },
         async (payload) => {
-          console.log('Orders changed:', payload);
+          console.log('Table orders changed:', payload);
           await fetchTableOrders(tableId);
         }
       )
@@ -130,77 +137,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log('Device ID:', deviceId);
       console.log('Cart items:', cartItems);
       
-      // Check if the orders table has a table_id column
-      try {
-        const { data, error } = await supabase
-          .from('orders')
-          .select('table_id')
-          .limit(1);
-          
-        if (error && error.message.includes('table_id')) {
-          console.log('Table ID column not found in orders table, placing order without table_id');
-          
-          const orderData = {
-            restaurant_id: restaurantId,
-            total_amount: getCartTotal(),
-            status: 'placed',
-            device_id: deviceId
-          };
-          
-          console.log('Order data to insert (without table_id):', orderData);
-          
-          const { data: order, error: orderError } = await supabase
-            .from('orders')
-            .insert(orderData)
-            .select()
-            .single();
-
-          if (orderError) {
-            console.error('Error inserting order:', orderError);
-            throw orderError;
-          }
-
-          console.log('Order inserted successfully:', order);
-          
-          const orderItems = cartItems.map(item => ({
-            order_id: order.id,
-            item_id: item.id,
-            item_name: item.name,
-            quantity: item.quantity,
-            price: parseFloat(item.selectedVariant ? item.selectedVariant.price : item.price),
-            variant_name: item.selectedVariant?.name,
-            variant_id: item.selectedVariant?.id
-          }));
-
-          console.log('Order items to insert:', orderItems);
-
-          const { error: itemsError } = await supabase
-            .from('order_items')
-            .insert(orderItems);
-
-          if (itemsError) {
-            console.error('Error inserting order items:', itemsError);
-            throw itemsError;
-          }
-          
-          console.log('Order items inserted successfully');
-          clearCart();
-          await fetchOrders();
-          toast.success('Order placed successfully!');
-          return;
-        }
-      } catch (checkError) {
-        console.log('Error checking for table_id column:', checkError);
-        // Continue with the attempt to place the order
-      }
-      
-      // If we get here, try with the table_id included (if provided)
       const orderData = {
         restaurant_id: restaurantId,
         total_amount: getCartTotal(),
         status: 'placed',
         device_id: deviceId,
-        ...(tableId ? { table_id: tableId } : {}) // Only include table_id if it's provided
+        ...(tableId ? { table_id: tableId } : {}) 
       };
       
       console.log('Order data to insert:', orderData);
@@ -217,7 +159,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       console.log('Order inserted successfully:', order);
-
+      
       const orderItems = cartItems.map(item => ({
         order_id: order.id,
         item_id: item.id,
