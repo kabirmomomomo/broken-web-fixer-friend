@@ -7,6 +7,7 @@ import { RestaurantUI } from "@/services/menuService";
 import { useNavigate } from "react-router-dom";
 import RestaurantDetailsDialog from "@/components/menu/RestaurantDetailsDialog";
 import ChangePasswordDialog from "./ChangePasswordDialog";
+import TableQRDialog from "@/components/menu/TableQRDialog";
 
 interface EditorHeaderProps {
   restaurant: RestaurantUI;
@@ -62,11 +63,13 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
           <span className="hidden md:inline ml-2">Sign Out</span>
         </Button>
 
+        <TableQRDialog restaurantId={restaurant.id} />
+
         <Dialog>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 px-2 md:px-3">
               <QrCode className="h-4 w-4" />
-              <span className="hidden md:inline ml-2">QR Code</span>
+              <span className="hidden md:inline ml-2">Menu QR</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
