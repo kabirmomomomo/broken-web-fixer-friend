@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Smartphone, User, Table as TableIcon, Trash2 } from 'lucide-react';
+import { Smartphone, User, Table as TableIcon, Trash2, RefreshCcw, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/sonner';
@@ -34,10 +33,12 @@ interface Order {
 
 const OrderDashboard = () => {
   const { restaurantId } = useParams<{ restaurantId: string }>();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -135,6 +136,13 @@ const OrderDashboard = () => {
     }
   };
   
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchOrders();
+    setIsRefreshing(false);
+    toast.success('Orders refreshed');
+  };
+
   const filteredOrders = orders.filter(order => {
     if (activeTab === 'all') return true;
     if (activeTab === 'table') return !!order.table_id;
@@ -183,11 +191,30 @@ const OrderDashboard = () => {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex flex-col md:flex-row justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-purple-900">Order Dashboard</h1>
-          <p className="text-gray-500">Monitor and manage orders in real-time</p>
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate('/menu-editor')}
+            className="h-10 w-10"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-purple-900">Order Dashboard</h1>
+            <p className="text-gray-500">Monitor and manage orders in real-time</p>
+          </div>
         </div>
-        <div className="mt-4 md:mt-0">
+        <div className="flex items-center gap-4 mt-4 md:mt-0">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className={`h-10 w-10 ${isRefreshing ? 'animate-spin' : ''}`}
+          >
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
           <Badge className="mr-2 bg-purple-100 text-purple-800 hover:bg-purple-200 border-purple-200">
             {orders.length} Orders
           </Badge>
