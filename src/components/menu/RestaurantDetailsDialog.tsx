@@ -33,10 +33,14 @@ interface RestaurantDetailsDialogProps {
     wifi_password?: string;
     opening_time?: string;
     closing_time?: string;
+    id?: string;
   };
   onSave: (details: Partial<RestaurantDetailsDialogProps['restaurant']>) => void;
   children?: React.ReactNode;
 }
+
+const getDraftKey = (restaurant: RestaurantDetailsDialogProps['restaurant']) => 
+  `restaurant_details_draft_${restaurant.id ?? restaurant.name}`;
 
 const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
   restaurant,
@@ -47,20 +51,49 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
   const [formData, setFormData] = React.useState(restaurant);
   const isMobile = useIsMobile();
 
-  // Update formData when restaurant prop changes
   React.useEffect(() => {
-    setFormData(restaurant);
-  }, [restaurant]);
+    if (!isOpen) return;
+    const draftKey = getDraftKey(restaurant);
+    const draft = localStorage.getItem(draftKey);
+    if (draft) {
+      try {
+        setFormData(JSON.parse(draft));
+      } catch {
+        setFormData(restaurant);
+      }
+    } else {
+      setFormData(restaurant);
+    }
+  }, [restaurant, isOpen]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const draftKey = getDraftKey(restaurant);
+    localStorage.setItem(draftKey, JSON.stringify(formData));
+  }, [formData, isOpen]);
+
+  const clearDraft = () => {
+    const draftKey = getDraftKey(restaurant);
+    localStorage.removeItem(draftKey);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Log the data being saved to help with debugging
     console.log("Saving restaurant details:", formData);
-    
     onSave(formData);
     toast.success("Restaurant details saved");
     setIsOpen(false);
+    clearDraft();
+  };
+
+  const handleCancel = () => {
+    setIsOpen(false);
+    clearDraft();
+    setFormData(restaurant);
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.target.select();
   };
 
   const FormContent = () => (
@@ -73,6 +106,7 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
             value={formData.image_url || ''}
             onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
             placeholder="https://example.com/image.jpg"
+            onFocus={handleFocus}
           />
         </div>
         <div className="col-span-2">
@@ -82,6 +116,7 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
+            onFocus={handleFocus}
           />
         </div>
         <div className="col-span-2">
@@ -91,6 +126,7 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             required
+            onFocus={handleFocus}
           />
         </div>
         <div className="col-span-2">
@@ -100,6 +136,7 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
             value={formData.google_review_link || ''}
             onChange={(e) => setFormData({ ...formData, google_review_link: e.target.value })}
             placeholder="https://g.page/..."
+            onFocus={handleFocus}
           />
         </div>
         <div className="col-span-2">
@@ -109,6 +146,7 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
             value={formData.location || ''}
             onChange={(e) => setFormData({ ...formData, location: e.target.value })}
             placeholder="123 Restaurant St, City"
+            onFocus={handleFocus}
           />
         </div>
         <div className="col-span-2 sm:col-span-1">
@@ -118,6 +156,7 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
             value={formData.phone || ''}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             placeholder="+1 (555) 123-4567"
+            onFocus={handleFocus}
           />
         </div>
         <div className="col-span-2 sm:col-span-1">
@@ -127,6 +166,7 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
             value={formData.wifi_password || ''}
             onChange={(e) => setFormData({ ...formData, wifi_password: e.target.value })}
             placeholder="restaurant123"
+            onFocus={handleFocus}
           />
         </div>
         <div className="col-span-2 sm:col-span-1">
@@ -136,6 +176,7 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
             value={formData.opening_time || ''}
             onChange={(e) => setFormData({ ...formData, opening_time: e.target.value })}
             placeholder="11:00 AM"
+            onFocus={handleFocus}
           />
         </div>
         <div className="col-span-2 sm:col-span-1">
@@ -145,11 +186,12 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
             value={formData.closing_time || ''}
             onChange={(e) => setFormData({ ...formData, closing_time: e.target.value })}
             placeholder="10:00 PM"
+            onFocus={handleFocus}
           />
         </div>
       </div>
       <div className="flex justify-end gap-3 sticky bottom-0 bg-background py-4 border-t">
-        <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+        <Button type="button" variant="outline" onClick={handleCancel}>
           Cancel
         </Button>
         <Button type="submit">Save Changes</Button>
