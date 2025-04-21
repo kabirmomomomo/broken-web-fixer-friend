@@ -125,19 +125,33 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setIsLoading(true);
     try {
+      console.log('Placing order with restaurant ID:', restaurantId);
+      console.log('Table ID:', tableId);
+      console.log('Device ID:', deviceId);
+      console.log('Cart items:', cartItems);
+      
+      const orderData = {
+        restaurant_id: restaurantId,
+        total_amount: getCartTotal(),
+        status: 'placed',
+        device_id: deviceId,
+        table_id: tableId || null
+      };
+      
+      console.log('Order data to insert:', orderData);
+      
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          restaurant_id: restaurantId,
-          total_amount: getCartTotal(),
-          status: 'placed',
-          device_id: deviceId,
-          table_id: tableId
-        })
+        .insert(orderData)
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('Error inserting order:', orderError);
+        throw orderError;
+      }
+
+      console.log('Order inserted successfully:', order);
 
       const orderItems = cartItems.map(item => ({
         order_id: order.id,
@@ -149,12 +163,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         variant_id: item.selectedVariant?.id
       }));
 
+      console.log('Order items to insert:', orderItems);
+
       const { error: itemsError } = await supabase
         .from('order_items')
         .insert(orderItems);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('Error inserting order items:', itemsError);
+        throw itemsError;
+      }
 
+      console.log('Order items inserted successfully');
       clearCart();
       await fetchOrders();
       if (tableId) {

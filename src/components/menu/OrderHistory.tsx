@@ -4,21 +4,13 @@ import { useOrders } from '@/contexts/OrderContext';
 import { format } from 'date-fns';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { ClipboardList, Users } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { ClipboardList } from 'lucide-react';
 
 interface OrderHistoryProps {
   tableId?: string;
-  showTableToggle?: boolean;
-  onToggleTableOrders?: () => void;
 }
 
-const OrderHistory: React.FC<OrderHistoryProps> = ({ 
-  tableId, 
-  showTableToggle = false,
-  onToggleTableOrders
-}) => {
+const OrderHistory: React.FC<OrderHistoryProps> = ({ tableId }) => {
   const { orders, tableOrders } = useOrders();
   const location = window.location.pathname;
   const menuId = location.split('/menu-preview/')[1];
@@ -43,18 +35,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({
       </SheetTrigger>
       <SheetContent side="left" className="w-full sm:max-w-md overflow-auto">
         <SheetHeader className="mb-4">
-          <div className="flex justify-between items-center">
-            <SheetTitle>Order History</SheetTitle>
-            {showTableToggle && tableId && (
-              <div className="flex items-center space-x-2">
-                <Switch id="table-view" onCheckedChange={onToggleTableOrders} />
-                <Label htmlFor="table-view" className="flex items-center space-x-1">
-                  <Users className="h-4 w-4" /> 
-                  <span>Table View</span>
-                </Label>
-              </div>
-            )}
-          </div>
+          <SheetTitle>Order History</SheetTitle>
         </SheetHeader>
         <div className="mt-2 space-y-4">
           {orders.length === 0 ? (

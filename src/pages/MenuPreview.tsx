@@ -24,7 +24,6 @@ import { Toaster } from "@/components/ui/toaster";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import { OrderProvider } from '@/contexts/OrderContext';
 import OrderHistory from '@/components/menu/OrderHistory';
-import TableOrders from '@/components/menu/TableOrders';
 
 // Sample data as fallback when API call fails or is loading
 const sampleData: Restaurant = {
@@ -61,7 +60,6 @@ const MenuPreview = () => {
   const [isDbError, setIsDbError] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [showTableOrders, setShowTableOrders] = useState(false);
   const isMobile = useIsMobile();
 
   // Optimize query with better caching and error handling
@@ -187,11 +185,6 @@ const MenuPreview = () => {
     return tableId ? `${baseUrl}?table=${tableId}` : baseUrl;
   }, [restaurantToDisplay, tableId]);
   
-  // Toggle table orders visibility
-  const toggleTableOrders = useCallback(() => {
-    setShowTableOrders(prev => !prev);
-  }, []);
-
   // Check if we have a table ID to enable table features
   const isTableContext = !!tableId;
   
@@ -246,12 +239,6 @@ const MenuPreview = () => {
           <div className={isMobile ? "px-2" : "px-6"}>
             <SearchBar onSearch={handleSearch} />
             
-            {isTableContext && showTableOrders && (
-              <div className="mb-6">
-                <TableOrders />
-              </div>
-            )}
-            
             <MenuList 
               categories={restaurantToDisplay.categories} 
               openCategories={openCategories} 
@@ -263,7 +250,7 @@ const MenuPreview = () => {
           <MenuFooter />
         </div>
         <Cart tableId={tableId || undefined} />
-        <OrderHistory tableId={tableId || undefined} showTableToggle={isTableContext} onToggleTableOrders={toggleTableOrders} />
+        <OrderHistory tableId={tableId || undefined} />
         <Toaster />
       </OrderProvider>
     </CartProvider>
