@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,13 +13,30 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table } from "lucide-react";
 import html2canvas from "html2canvas";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
 
 interface TableQRDialogProps {
   restaurantId: string;
 }
 
 const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
-  const numberOfTables = 20;
+  const [tableCount, setTableCount] = useState(20);
+  const { toast } = useToast();
+
+  const handleTableCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newCount = parseInt(e.target.value);
+    if (newCount < 1) {
+      toast({
+        variant: "destructive",
+        title: "Invalid table count",
+        description: "Number of tables must be at least 1"
+      });
+      return;
+    }
+    setTableCount(newCount);
+  };
 
   const downloadQRCode = async (tableId: string) => {
     const element = document.getElementById(`qr-code-${tableId}`);
@@ -47,9 +64,24 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
             Generate QR codes for each table. Customers can scan these to place orders.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="flex items-center gap-4 mb-4">
+          <div className="flex-1 space-y-2">
+            <Label htmlFor="tableCount">Number of Tables</Label>
+            <Input
+              id="tableCount"
+              type="number"
+              min="1"
+              value={tableCount}
+              onChange={handleTableCountChange}
+              className="max-w-[200px]"
+            />
+          </div>
+        </div>
+
         <ScrollArea className="h-[60vh] w-full rounded-md">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4">
-            {Array.from({ length: numberOfTables }, (_, i) => i + 1).map((tableNumber) => (
+            {Array.from({ length: tableCount }, (_, i) => i + 1).map((tableNumber) => (
               <div
                 key={tableNumber}
                 className="p-4 border rounded-lg bg-white flex flex-col items-center space-y-3"
