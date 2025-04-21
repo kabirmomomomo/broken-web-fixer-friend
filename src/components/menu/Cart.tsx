@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useOrders } from '@/contexts/OrderContext';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 
 interface CartProps {
@@ -21,8 +20,19 @@ interface CartProps {
 const Cart: React.FC<CartProps> = ({ tableId }) => {
   const [open, setOpen] = useState(false);
   const { menuId } = useParams();
+  const [searchParams] = useSearchParams();
   const { cartItems, removeFromCart, updateQuantity, getCartTotal, getItemCount, clearCart } = useCart();
   const { placeOrder, isLoading } = useOrders();
+  
+  const tableIdFromUrl = searchParams.get('table');
+  const effectiveTableId = tableId || tableIdFromUrl;
+
+  console.log("Cart component initialized with:", { 
+    menuId, 
+    tableIdFromProps: tableId, 
+    tableIdFromUrl: tableIdFromUrl,
+    effectiveTableId: effectiveTableId
+  });
 
   const handleCheckout = async () => {
     try {
@@ -34,17 +44,16 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
       
       console.log('Checkout initiated:');
       console.log('- menuId:', menuId);
-      console.log('- tableId:', tableId || 'none');
+      console.log('- tableId:', effectiveTableId || 'none');
       console.log('- cart items:', cartItems);
       console.log('- cart total:', getCartTotal());
       
-      // Ensure the restaurant ID is valid
       if (!menuId || menuId === 'undefined' || menuId === 'null') {
         toast.error('Invalid restaurant ID');
         return;
       }
       
-      await placeOrder(menuId, tableId);
+      await placeOrder(menuId, effectiveTableId || undefined);
       setOpen(false);
     } catch (error) {
       console.error('Error during checkout:', error);
@@ -52,8 +61,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
     }
   };
 
-  // Format the table display by stripping non-numeric characters
-  const displayTableId = tableId ? tableId.replace(/\D/g, '') : undefined;
+  const displayTableId = effectiveTableId ? effectiveTableId.replace(/\D/g, '') : undefined;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

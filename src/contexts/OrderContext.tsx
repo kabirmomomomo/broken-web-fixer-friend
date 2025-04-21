@@ -46,13 +46,20 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     console.log("OrderProvider initialized with deviceId:", deviceId);
-    fetchOrders();
-    
-    if (tableId) {
-      console.log(`Fetching orders for tableId: ${tableId}`);
-      fetchTableOrders(tableId);
-      subscribeToTableOrders(tableId);
-    }
+    // Run database setup once on initialization
+    setupDatabase().then(success => {
+      if (success) {
+        console.log("Database setup completed successfully");
+      }
+      // Fetch orders regardless of setup result, as the tables might already exist
+      fetchOrders();
+      
+      if (tableId) {
+        console.log(`Fetching orders for tableId: ${tableId}`);
+        fetchTableOrders(tableId);
+        subscribeToTableOrders(tableId);
+      }
+    });
     
     return () => {
       supabase.removeAllChannels();
@@ -178,8 +185,15 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return;
       }
       
-      // Try to ensure the database tables exist first
-      await setupDatabase();
+      // Ensure database setup is complete first to avoid table_id missing issue
+      const isSetupOk = await setupDatabase();
+      if (!isSetupOk) {
+        console.error('Database setup failed, cannot proceed with order');
+        toast.error('Database setup failed. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+      console.log('Database setup verified, proceeding with order placement');
       
       // Create order data object
       const orderData: any = {
@@ -206,17 +220,15 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (orderError) {
         console.error('Error inserting order:', orderError);
-        // Try to create the missing column if that's the issue
+        
         if (orderError.message?.includes('table_id')) {
-          console.log('Attempting to fix table_id column issue...');
-          const isColumnAdded = await setupDatabase();
-          if (isColumnAdded) {
-            // Retry the order placement
-            toast.info('Updating database schema, please try again');
-            setIsLoading(false);
-            return;
-          }
+          console.log('Detected table_id column issue. Attempting fix...');
+          await setupDatabase();
+          toast.error('Database schema updated. Please try again.');
+          setIsLoading(false);
+          return;
         }
+        
         throw new Error(`Database error: ${orderError.message}`);
       }
 

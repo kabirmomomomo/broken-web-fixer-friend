@@ -95,13 +95,14 @@ export const setupDatabase = async () => {
       }
     }
 
-    // Check if orders table exists
+    // Check if orders table exists and create it with proper schema including table_id from the start
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('count(*)', { count: 'exact' });
 
     if (ordersError && ordersError.code === 'PGRST116') {
-      // Orders table doesn't exist, create it with table_id column
+      // Orders table doesn't exist, create it with table_id column immediately
+      console.log('Creating orders table with table_id column...');
       const { error: createOrdersError } = await supabase.rpc(
         'create_table_if_not_exists',
         {
@@ -125,23 +126,49 @@ export const setupDatabase = async () => {
         toast.error('Could not create orders table. Some features may not work.');
         return false;
       }
-    } else if (!ordersError) {
-      // Orders table exists, check if table_id column exists
+      console.log('Orders table created successfully with table_id column');
+    } 
+    else if (!ordersError) {
+      // Orders table exists, explicitly check if table_id column exists and add it if not
       try {
-        const { error: alterTableError } = await supabase.rpc(
-          'create_column_if_not_exists',
-          {
-            table_name: 'orders',
-            column_name: 'table_id',
-            column_type: 'TEXT'
-          }
-        );
+        console.log('Orders table exists, checking for table_id column...');
+        
+        // First try to select using the table_id column to see if it exists
+        const { error: columnCheckError } = await supabase
+          .from('orders')
+          .select('table_id')
+          .limit(1);
+          
+        if (columnCheckError && columnCheckError.message && 
+            columnCheckError.message.includes("table_id")) {
+          console.log('table_id column missing, adding it now...');
+          
+          // Add the table_id column if it doesn't exist
+          const { error: alterTableError } = await supabase.rpc(
+            'create_column_if_not_exists',
+            {
+              table_name: 'orders',
+              column_name: 'table_id',
+              column_type: 'TEXT'
+            }
+          );
 
-        if (alterTableError) {
-          console.error('Error adding table_id column:', alterTableError);
+          if (alterTableError) {
+            console.error('Error adding table_id column:', alterTableError);
+            toast.error('Could not update orders table. Table orders may not work.');
+            return false;
+          }
+          
+          console.log('Successfully added table_id column to orders table');
+          toast.success('Database schema updated successfully');
+          return true;
+        } else {
+          console.log('table_id column already exists in orders table');
         }
       } catch (err) {
         console.error('Error checking/adding table_id column:', err);
+        toast.error('Could not verify orders table structure. Some features may not work.');
+        return false;
       }
     }
 
