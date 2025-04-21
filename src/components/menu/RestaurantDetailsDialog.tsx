@@ -66,8 +66,8 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
     field: keyof typeof formData,
     value: string
   ) => {
-    setFormData((prev) => ({
-      ...prev,
+    setFormData((prevData) => ({
+      ...prevData,
       [field]: value,
     }));
   };
@@ -209,7 +209,24 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
         <SheetTrigger asChild>
           {children}
         </SheetTrigger>
-        <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
+        <SheetContent 
+          side="bottom" 
+          className="h-[90vh] overflow-y-auto pb-12"
+          // Prevent sheet from stealing focus from inputs
+          onPointerDownOutside={(e) => {
+            // Prevent closing when clicking inside form elements
+            const target = e.target as HTMLElement;
+            if (target.closest('form')) {
+              e.preventDefault();
+            }
+          }}
+          onFocusOutside={(e) => {
+            // Prevent focus trap from stealing focus from inputs
+            if (e.target.closest('form')) {
+              e.preventDefault();
+            }
+          }}
+        >
           <SheetHeader className="mb-4">
             <SheetTitle>Edit Restaurant Details</SheetTitle>
             <SheetDescription>
