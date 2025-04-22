@@ -77,20 +77,17 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         }
       }
 
-      // Now, ensure the tables exist in the database using stored procedure
+      // Now, ensure the tables exist in the database using SQL queries directly
       for (let i = 1; i <= count; i++) {
         // Use an individual try-catch for each table to ensure one failure doesn't stop the rest
         try {
-          const tableData = {
-            restaurant_id: restaurantId,
-            table_number: i
-          };
-          
-          // Use a SQL query as a workaround for direct table insertions
-          const { error } = await supabase.rpc('upsert_table', {
-            p_restaurant_id: restaurantId,
-            p_table_number: i
-          });
+          // Instead of using rpc, use a direct SQL insert with ON CONFLICT DO UPDATE
+          const { error } = await supabase
+            .from('tables')
+            .upsert({
+              restaurant_id: restaurantId,
+              table_number: i
+            });
 
           if (error) {
             console.error('Error upserting table:', error);

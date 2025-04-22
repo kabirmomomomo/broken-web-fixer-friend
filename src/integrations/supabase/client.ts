@@ -6,7 +6,7 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://gjbnompenijpbnpakpwk.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqYm5vbXBlbmlqcGJucGFrcHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ2MzEwNzksImV4cCI6MjA2MDIwNzA3OX0.lZV9etn-8FhgRuxFQwGCQplw-iB4M4kvqR2m7ziUqKs";
 
-export type CustomTables = Database['public']['Tables'] & {
+export type TablesCustomTypes = {
   tables: {
     Row: {
       id: string;
@@ -30,11 +30,11 @@ export type CustomTables = Database['public']['Tables'] & {
       updated_at?: string | null;
     };
   };
-  orders: {
+  orders_with_table_id: {
     Row: {
       id: string;
       restaurant_id: string;
-      table_id?: string | null;
+      table_id: string | null;
       device_id: string | null;
       total_amount: number;
       status: string;
@@ -67,7 +67,14 @@ export type CustomTables = Database['public']['Tables'] & {
   };
 };
 
+// Extended Database type with our custom tables
+export type DatabaseWithCustomTables = Database & {
+  public: {
+    Tables: Database['public']['Tables'] & TablesCustomTypes
+  }
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<DatabaseWithCustomTables>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);

@@ -6,6 +6,14 @@ import { useCart } from './CartContext';
 import { getDeviceId } from '@/utils/deviceId';
 import { useSearchParams } from 'react-router-dom';
 
+interface OrderItem {
+  id: string;
+  item_name: string;
+  quantity: number;
+  price: number;
+  variant_name?: string;
+}
+
 interface Order {
   id: string;
   total_amount: number;
@@ -15,14 +23,6 @@ interface Order {
   table_id?: string;
   device_id: string;
   items: OrderItem[];
-}
-
-interface OrderItem {
-  id: string;
-  item_name: string;
-  quantity: number;
-  price: number;
-  variant_name?: string;
 }
 
 interface OrderContextType {
@@ -144,77 +144,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log('Device ID:', deviceId);
       console.log('Cart items:', cartItems);
       
-      // Check if the orders table has a table_id column
-      try {
-        const { data, error } = await supabase
-          .from('orders')
-          .select('table_id')
-          .limit(1);
-          
-        if (error && error.message.includes('table_id')) {
-          console.log('Table ID column not found in orders table, placing order without table_id');
-          
-          const orderData = {
-            restaurant_id: restaurantId,
-            total_amount: getCartTotal(),
-            status: 'placed',
-            device_id: deviceId
-          };
-          
-          console.log('Order data to insert (without table_id):', orderData);
-          
-          const { data: order, error: orderError } = await supabase
-            .from('orders')
-            .insert(orderData)
-            .select()
-            .single();
-
-          if (orderError) {
-            console.error('Error inserting order:', orderError);
-            throw orderError;
-          }
-
-          console.log('Order inserted successfully:', order);
-          
-          const orderItems = cartItems.map(item => ({
-            order_id: order.id,
-            item_id: item.id,
-            item_name: item.name,
-            quantity: item.quantity,
-            price: parseFloat(item.selectedVariant ? item.selectedVariant.price : item.price),
-            variant_name: item.selectedVariant?.name,
-            variant_id: item.selectedVariant?.id
-          }));
-
-          console.log('Order items to insert:', orderItems);
-
-          const { error: itemsError } = await supabase
-            .from('order_items')
-            .insert(orderItems);
-
-          if (itemsError) {
-            console.error('Error inserting order items:', itemsError);
-            throw itemsError;
-          }
-          
-          console.log('Order items inserted successfully');
-          clearCart();
-          await fetchOrders(restaurantId);
-          toast.success('Order placed successfully!');
-          return;
-        }
-      } catch (checkError) {
-        console.log('Error checking for table_id column:', checkError);
-        // Continue with the attempt to place the order
-      }
-      
-      // If we get here, try with the table_id included (if provided)
-      const orderData: any = {
+      // Prepare order data
+      const orderData = {
         restaurant_id: restaurantId,
         total_amount: getCartTotal(),
         status: 'placed',
         device_id: deviceId
-      };
+      } as any;
       
       // Only add table_id if it exists and is not null/undefined/empty
       if (tableId) {
@@ -273,8 +209,15 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const contextValue = {
+    orders,
+    tableOrders,
+    placeOrder,
+    isLoading
+  };
+
   return (
-    <OrderContext.Provider value={{ orders, tableOrders, placeOrder, isLoading }}>
+    <OrderContext.Provider value={contextValue}>
       {children}
     </OrderContext.Provider>
   );

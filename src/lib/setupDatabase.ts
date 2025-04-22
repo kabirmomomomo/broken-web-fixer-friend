@@ -95,64 +95,51 @@ export const setupDatabase = async () => {
       }
     }
 
-    // Create tables table
-    const { data: tablesData, error: tablesError } = await supabase
-      .from('tables')
-      .select('count(*)', { count: 'exact' });
-
-    if (tablesError && tablesError.code === 'PGRST116') {
-      // Table doesn't exist, create it
-      const { error: createTablesError } = await supabase.rpc(
-        'create_table_if_not_exists',
-        {
-          table_name: 'tables',
-          table_definition: `
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-            restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
-            table_number INTEGER NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-            UNIQUE(restaurant_id, table_number)
-          `
-        }
-      );
-
-      if (createTablesError) {
-        console.error('Error creating tables table:', createTablesError);
-        toast.error('Could not create tables table. Some features may not work.');
-        return false;
+    // Create tables table using raw SQL via RPC
+    const { error: createTablesError } = await supabase.rpc(
+      'create_table_if_not_exists',
+      {
+        table_name: 'tables',
+        table_definition: `
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+          table_number INTEGER NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+          UNIQUE(restaurant_id, table_number)
+        `
       }
+    );
+
+    if (createTablesError) {
+      console.error('Error creating tables table:', createTablesError);
+      toast.error('Could not create tables table. Some features may not work.');
+      return false;
     }
 
     // Create orders table with restaurant_id reference and table_id reference
-    const { data: ordersData, error: ordersError } = await supabase
-      .from('orders')
-      .select('count(*)', { count: 'exact' });
-
-    if (ordersError && ordersError.code === 'PGRST116') {
-      // Table doesn't exist, create it
-      const { error: createOrdersError } = await supabase.rpc(
-        'create_table_if_not_exists',
-        {
-          table_name: 'orders',
-          table_definition: `
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-            restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
-            table_id INTEGER,
-            device_id TEXT NOT NULL,
-            total_amount DECIMAL(10,2) NOT NULL,
-            status TEXT NOT NULL DEFAULT 'placed',
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
-          `
-        }
-      );
-
-      if (createOrdersError) {
-        console.error('Error creating orders table:', createOrdersError);
-        toast.error('Could not create orders table. Some features may not work.');
-        return false;
+    const { error: createOrdersError } = await supabase.rpc(
+      'create_table_if_not_exists',
+      {
+        table_name: 'orders',
+        table_definition: `
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+          table_id TEXT,
+          device_id TEXT NOT NULL,
+          total_amount DECIMAL(10,2) NOT NULL,
+          status TEXT NOT NULL DEFAULT 'placed',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+          user_id UUID
+        `
       }
+    );
+
+    if (createOrdersError) {
+      console.error('Error creating orders table:', createOrdersError);
+      toast.error('Could not create orders table. Some features may not work.');
+      return false;
     }
 
     // Create order_items table
