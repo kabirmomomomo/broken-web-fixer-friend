@@ -24,22 +24,36 @@ interface TableQRDialogProps {
 }
 
 const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
-  const [tableCount, setTableCount] = useState(20);
+  const [tableCount, setTableCount] = useState<number | null>(null);
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [tableNumbers, setTableNumbers] = useState<number[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  // Fetch table numbers only when the dialog is opened
   useEffect(() => {
-    if (isDialogOpen) {
-      fetchTableNumbers();
+    const initializeTables = async () => {
+      if (!initialLoadDone && restaurantId) {
+        await fetchTableNumbers(false);
+        setInitialLoadDone(true);
+      }
+    };
+    
+    initializeTables();
+  }, [restaurantId, initialLoadDone]);
+
+  useEffect(() => {
+    if (isDialogOpen && initialLoadDone) {
+      fetchTableNumbers(true);
     }
   }, [isDialogOpen]);
 
-  const fetchTableNumbers = async () => {
+  const fetchTableNumbers = async (isDialogOpening: boolean) => {
     try {
-      setIsUpdating(true);
+      if (isDialogOpening) {
+        setIsUpdating(true);
+      }
+      
       const { data, error } = await supabase
         .from('tables')
         .select('table_number')
@@ -47,53 +61,64 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         .order('table_number', { ascending: true });
       
       if (error) {
-        // Handle the case where the table doesn't exist yet
         if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
           console.log('Tables table does not exist yet');
-          // Default to generating QR codes for tableCount tables
-          setTableNumbers(Array.from({ length: tableCount }, (_, i) => i + 1));
-          setIsUpdating(false);
+          
+          const defaultCount = tableCount || 20;
+          setTableNumbers(Array.from({ length: defaultCount }, (_, i) => i + 1));
+          if (tableCount === null) setTableCount(defaultCount);
+          
+          if (!isDialogOpening) {
+            await ensureTablesTableExists();
+            await updateTables(defaultCount);
+          }
+          
+          if (isDialogOpening) setIsUpdating(false);
           return;
         }
         
         console.error('Error fetching tables:', error);
-        // Continue with default table numbers
-        setTableNumbers(Array.from({ length: tableCount }, (_, i) => i + 1));
-        setIsUpdating(false);
+        const defaultCount = tableCount || 20;
+        setTableNumbers(Array.from({ length: defaultCount }, (_, i) => i + 1));
+        if (tableCount === null) setTableCount(defaultCount);
+        
+        if (isDialogOpening) setIsUpdating(false);
         return;
       }
       
       if (data && data.length > 0) {
         const numbers = data.map(t => t.table_number);
-        console.log('Table IDs:', numbers);
+        console.log('Table numbers from database:', numbers);
         setTableNumbers(numbers);
-        // Update the table count to match the total number of tables
+        
         setTableCount(numbers.length);
       } else {
-        // If no tables exist in the database yet, create the default number
-        setTableNumbers(Array.from({ length: tableCount }, (_, i) => i + 1));
-        // Create the initial tables in the database
-        await ensureTablesTableExists();
-        await updateTables(tableCount);
+        const defaultCount = tableCount || 20;
+        setTableNumbers(Array.from({ length: defaultCount }, (_, i) => i + 1));
+        if (tableCount === null) setTableCount(defaultCount);
+        
+        if (!isDialogOpening) {
+          await ensureTablesTableExists();
+          await updateTables(defaultCount);
+        }
       }
     } catch (error) {
       console.error('Exception during table fetch:', error);
-      // Continue with default table numbers for QR generation
-      setTableNumbers(Array.from({ length: tableCount }, (_, i) => i + 1));
+      const defaultCount = tableCount || 20;
+      setTableNumbers(Array.from({ length: defaultCount }, (_, i) => i + 1));
+      if (tableCount === null) setTableCount(defaultCount);
     } finally {
-      setIsUpdating(false);
+      if (isDialogOpening) setIsUpdating(false);
     }
   };
 
   const updateTables = async (count: number) => {
-    if (isUpdating) return;
+    if (isUpdating || count === null) return;
     
     setIsUpdating(true);
     try {
-      // Ensure the tables table exists
       await ensureTablesTableExists();
       
-      // First, get existing table numbers
       const { data: existingTables, error: fetchError } = await supabase
         .from('tables')
         .select('id, table_number')
@@ -107,7 +132,6 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
       const existingTableNumbers = existingTables ? existingTables.map(t => t.table_number) : [];
       
       if (count > existingTableNumbers.length) {
-        // We need to add new tables
         const newTablesCount = count - existingTableNumbers.length;
         const startingNumber = existingTableNumbers.length > 0 ? 
           Math.max(...existingTableNumbers) + 1 : 1;
@@ -121,7 +145,6 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
           });
         }
         
-        // Bulk insert new tables for better performance
         if (newTables.length > 0) {
           const { error } = await supabase
             .from('tables')
@@ -129,7 +152,6 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
               
           if (error) {
             console.error(`Error adding tables:`, error);
-            // Try individual inserts as fallback if bulk insert fails
             for (const tableData of newTables) {
               try {
                 await supabase.from('tables').upsert(tableData);
@@ -140,15 +162,12 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
           }
         }
       } else if (count < existingTableNumbers.length) {
-        // We need to remove tables, starting from the highest numbers
         const tablesToRemove = existingTableNumbers.length - count;
         const sortedExistingTables = [...existingTables || []].sort((a, b) => b.table_number - a.table_number);
         
-        // Get IDs of tables to remove
         const tableIdsToRemove = sortedExistingTables.slice(0, tablesToRemove).map(t => t.id);
         
         if (tableIdsToRemove.length > 0) {
-          // Bulk delete tables
           const { error } = await supabase
             .from('tables')
             .delete()
@@ -156,7 +175,6 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
             
           if (error) {
             console.error(`Error removing tables:`, error);
-            // Try individual deletes as fallback
             for (const tableId of tableIdsToRemove) {
               try {
                 await supabase.from('tables').delete().eq('id', tableId);
@@ -168,7 +186,6 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         }
       }
       
-      // Update the UI with new table numbers - fetch from DB to ensure consistency
       const { data: updatedTables } = await supabase
         .from('tables')
         .select('table_number')
@@ -180,12 +197,10 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         setTableNumbers(updatedNumbers);
         setTableCount(updatedNumbers.length);
       } else {
-        // Fallback: use the count parameter to generate numbers if DB fetch fails
         setTableNumbers(Array.from({ length: count }, (_, i) => i + 1));
         setTableCount(count);
       }
       
-      // Let the user know the process is complete
       toast({
         title: "QR codes updated",
         description: `Ready to download QR codes for ${count} tables`
@@ -193,7 +208,6 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
     } catch (error) {
       console.error('Error updating tables:', error);
       
-      // Even if DB operations fail, still update the UI to show the requested number of tables
       setTableNumbers(Array.from({ length: count }, (_, i) => i + 1));
       setTableCount(count);
     } finally {
@@ -203,7 +217,6 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
 
   const ensureTablesTableExists = async () => {
     try {
-      // Use RPC to check if table exists
       const { error } = await supabase.rpc(
         'create_table_if_not_exists',
         {
@@ -226,7 +239,6 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
       return true;
     } catch (error) {
       console.error('Exception ensuring tables table exists:', error);
-      // Try to set up the database
       await handleRelationDoesNotExistError(error);
       return false;
     }
@@ -247,13 +259,14 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
   };
 
   const incrementTableCount = () => {
+    if (tableCount === null) return;
     const newCount = tableCount + 1;
     setTableCount(newCount);
     updateTables(newCount);
   };
   
   const decrementTableCount = () => {
-    if (tableCount <= 1) return;
+    if (tableCount === null || tableCount <= 1) return;
     const newCount = tableCount - 1;
     setTableCount(newCount);
     updateTables(newCount);
@@ -292,7 +305,7 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
               variant="outline" 
               size="icon"
               onClick={decrementTableCount}
-              disabled={tableCount <= 1 || isUpdating}
+              disabled={tableCount === null || tableCount <= 1 || isUpdating}
             >
               <span className="font-bold text-lg">-</span>
             </Button>
@@ -302,7 +315,7 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
                 id="tableCount"
                 type="number"
                 min="1"
-                value={tableCount}
+                value={tableCount === null ? "" : tableCount}
                 onChange={handleTableCountChange}
                 className="text-center"
                 disabled={isUpdating}
@@ -313,7 +326,7 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
               variant="outline" 
               size="icon"
               onClick={incrementTableCount}
-              disabled={isUpdating}
+              disabled={isUpdating || tableCount === null}
             >
               <span className="font-bold text-lg">+</span>
             </Button>
