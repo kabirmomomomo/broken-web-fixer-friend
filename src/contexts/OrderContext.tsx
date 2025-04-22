@@ -12,6 +12,7 @@ interface OrderItem {
   quantity: number;
   price: number;
   variant_name?: string;
+  restaurant_id: string; // Added restaurant_id to OrderItem interface
 }
 
 interface Order {
@@ -179,6 +180,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const orderItems = cartItems.map(item => ({
         order_id: order.id,
+        restaurant_id: restaurantId, // Add restaurant_id to order items
         item_id: item.id,
         item_name: item.name,
         quantity: item.quantity,

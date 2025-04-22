@@ -142,7 +142,7 @@ export const setupDatabase = async () => {
       return false;
     }
 
-    // Create order_items table
+    // Create order_items table with restaurant_id reference
     const { data: orderItemsData, error: orderItemsError } = await supabase
       .from('order_items')
       .select('count(*)', { count: 'exact' });
@@ -156,6 +156,7 @@ export const setupDatabase = async () => {
           table_definition: `
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
             order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+            restaurant_id UUID NOT NULL,
             item_id UUID,
             item_name TEXT NOT NULL,
             quantity INTEGER NOT NULL,
@@ -163,7 +164,8 @@ export const setupDatabase = async () => {
             variant_name TEXT,
             variant_id UUID,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
           `
         }
       );
