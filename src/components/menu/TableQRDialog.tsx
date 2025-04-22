@@ -33,50 +33,45 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
     
     setIsUpdating(true);
     try {
-      // First, check if the tables table exists by fetching a single row
-      const { data: tablesData, error: tablesError } = await supabase
-        .from('tables')
-        .select('*')
-        .limit(1);
+      // Create or verify the tables table exists using RPC
+      try {
+        const { error: tableSchemaError } = await supabase.rpc(
+          'create_table_if_not_exists',
+          {
+            table_name: 'tables',
+            table_definition: `
+              id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+              restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+              table_number INTEGER NOT NULL,
+              created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+              updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+              UNIQUE(restaurant_id, table_number)
+            `
+          }
+        );
         
-      if (tablesError) {
-        // Table might not exist, try to set up the database
-        console.log('Error checking tables table:', tablesError);
-        const setupSuccess = await handleRelationDoesNotExistError(tablesError);
-        if (!setupSuccess) {
-          console.error('Failed to set up tables table:', tablesError);
-          toast({
-            variant: "destructive",
-            title: "Error updating tables",
-            description: "Failed to update table information. Database setup required."
-          });
-          setIsUpdating(false);
-          return;
+        if (tableSchemaError) {
+          console.error('Error creating tables schema:', tableSchemaError);
+          throw tableSchemaError;
         }
+      } catch (schemaError) {
+        console.error('Schema creation error:', schemaError);
+        // Continue anyway since the table might already exist
       }
 
-      // Now, ensure the tables exist in the database
+      // Now, ensure the tables exist in the database using SQL
       for (let i = 1; i <= count; i++) {
-        // Use an individual try-catch for each table to ensure one failure doesn't stop the rest
-        try {
-          const { error } = await supabase
-            .from('tables')
-            .upsert(
-              {
-                restaurant_id: restaurantId,
-                table_number: i,
-              },
-              {
-                onConflict: 'restaurant_id,table_number'
-              }
-            );
-
-          if (error) {
-            console.error('Error upserting table:', error);
-            // Continue with other tables instead of stopping completely
+        // Use RPC to insert table data
+        const { error } = await supabase.rpc(
+          'insert_table_if_not_exists',
+          {
+            p_restaurant_id: restaurantId,
+            p_table_number: i
           }
-        } catch (tableError) {
-          console.error('Exception during table upsert:', tableError);
+        );
+
+        if (error) {
+          console.error(`Error upserting table ${i}:`, error);
           // Continue with other tables
         }
       }
