@@ -1,3 +1,4 @@
+
 import { supabase } from './supabase';
 import { toast } from '@/components/ui/sonner';
 
@@ -123,7 +124,7 @@ export const setupDatabase = async () => {
       }
     }
 
-    // Create orders table with table_id reference
+    // Create orders table with restaurant_id reference and table_id reference
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('count(*)', { count: 'exact' });

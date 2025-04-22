@@ -6,6 +6,67 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://gjbnompenijpbnpakpwk.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqYm5vbXBlbmlqcGJucGFrcHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ2MzEwNzksImV4cCI6MjA2MDIwNzA3OX0.lZV9etn-8FhgRuxFQwGCQplw-iB4M4kvqR2m7ziUqKs";
 
+export type CustomTables = Database['public']['Tables'] & {
+  tables: {
+    Row: {
+      id: string;
+      restaurant_id: string;
+      table_number: number;
+      created_at: string | null;
+      updated_at: string | null;
+    };
+    Insert: {
+      id?: string;
+      restaurant_id: string;
+      table_number: number;
+      created_at?: string | null;
+      updated_at?: string | null;
+    };
+    Update: {
+      id?: string;
+      restaurant_id?: string;
+      table_number?: number;
+      created_at?: string | null;
+      updated_at?: string | null;
+    };
+  };
+  orders: {
+    Row: {
+      id: string;
+      restaurant_id: string;
+      table_id?: string | null;
+      device_id: string | null;
+      total_amount: number;
+      status: string;
+      created_at: string | null;
+      updated_at: string | null;
+      user_id?: string | null;
+    };
+    Insert: {
+      id?: string;
+      restaurant_id: string;
+      table_id?: string | null;
+      device_id?: string | null;
+      total_amount: number;
+      status?: string;
+      created_at?: string | null;
+      updated_at?: string | null;
+      user_id?: string | null;
+    };
+    Update: {
+      id?: string;
+      restaurant_id?: string;
+      table_id?: string | null;
+      device_id?: string | null;
+      total_amount?: number;
+      status?: string;
+      created_at?: string | null;
+      updated_at?: string | null;
+      user_id?: string | null;
+    };
+  };
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 

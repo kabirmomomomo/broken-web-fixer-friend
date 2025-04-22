@@ -69,7 +69,16 @@ const App = () => (
               </CartProvider>
             } 
           />
-          <Route path="/restaurant/:restaurantId/orders" element={<OrderDashboard />} />
+          <Route 
+            path="/restaurant/:restaurantId/orders" 
+            element={
+              <CartProvider>
+                <OrderProvider>
+                  <OrderDashboard />
+                </OrderProvider>
+              </CartProvider>
+            } 
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </TooltipProvider>

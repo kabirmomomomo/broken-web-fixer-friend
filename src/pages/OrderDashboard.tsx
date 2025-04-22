@@ -122,10 +122,13 @@ const OrderDashboard = () => {
   };
   
   const deleteTableOrders = async (tableId: string) => {
+    if (!restaurantId) return;
+    
     try {
       const { error } = await supabase
         .from('orders')
         .delete()
+        .eq('restaurant_id', restaurantId)
         .eq('table_id', tableId);
         
       if (error) throw error;

@@ -34,17 +34,39 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
     setIsUpdating(true);
     try {
       // First, check if the tables table exists by fetching a single row
-      const { data: tablesData, error: tablesError } = await supabase
-        .from('tables')
-        .select('*')
-        .limit(1);
-        
-      if (tablesError) {
-        // Table might not exist, try to set up the database
-        console.log('Error checking tables table:', tablesError);
-        const setupSuccess = await handleRelationDoesNotExistError(tablesError);
+      try {
+        // Use RPC to check if table exists
+        const { error: checkError } = await supabase.rpc(
+          'create_table_if_not_exists',
+          {
+            table_name: 'tables',
+            table_definition: `
+              id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+              restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+              table_number INTEGER NOT NULL,
+              created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+              updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+              UNIQUE(restaurant_id, table_number)
+            `
+          }
+        );
+
+        if (checkError) {
+          console.error('Error checking tables table:', checkError);
+          toast({
+            variant: "destructive",
+            title: "Error updating tables",
+            description: "Failed to check if tables table exists."
+          });
+          setIsUpdating(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking tables table:', error);
+        // Try to set up the database
+        const setupSuccess = await handleRelationDoesNotExistError(error);
         if (!setupSuccess) {
-          console.error('Failed to set up tables table:', tablesError);
+          console.error('Failed to set up tables table:', error);
           toast({
             variant: "destructive",
             title: "Error updating tables",
@@ -55,21 +77,20 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         }
       }
 
-      // Now, ensure the tables exist in the database
+      // Now, ensure the tables exist in the database using stored procedure
       for (let i = 1; i <= count; i++) {
         // Use an individual try-catch for each table to ensure one failure doesn't stop the rest
         try {
-          const { error } = await supabase
-            .from('tables')
-            .upsert(
-              {
-                restaurant_id: restaurantId,
-                table_number: i,
-              },
-              {
-                onConflict: 'restaurant_id,table_number'
-              }
-            );
+          const tableData = {
+            restaurant_id: restaurantId,
+            table_number: i
+          };
+          
+          // Use a SQL query as a workaround for direct table insertions
+          const { error } = await supabase.rpc('upsert_table', {
+            p_restaurant_id: restaurantId,
+            p_table_number: i
+          });
 
           if (error) {
             console.error('Error upserting table:', error);
@@ -177,7 +198,7 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
                   className="bg-white p-4 rounded-lg"
                 >
                   <QRCode
-                    value={`${window.location.origin}/menu-preview/${restaurantId}?table=${tableNumber}`}
+                    value={`${window.location.origin}/menu-preview/${restaurantId}?table=${tableNumber}&restaurantId=${restaurantId}`}
                     size={150}
                     className="h-auto max-w-full"
                   />

@@ -42,22 +42,26 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [searchParams] = useSearchParams();
   const deviceId = getDeviceId();
   const tableId = searchParams.get('table');
+  const restaurantIdFromUrl = searchParams.get('restaurantId') || window.location.pathname.split('/')[2];
 
   useEffect(() => {
-    fetchOrders();
+    if (restaurantIdFromUrl) {
+      console.log('Restaurant ID detected:', restaurantIdFromUrl);
+      fetchOrders(restaurantIdFromUrl);
+    }
     
-    if (tableId) {
+    if (tableId && restaurantIdFromUrl) {
       console.log('Table ID detected:', tableId);
-      fetchTableOrders(tableId);
-      subscribeToTableOrders(tableId);
+      fetchTableOrders(restaurantIdFromUrl, tableId);
+      subscribeToTableOrders(restaurantIdFromUrl, tableId);
     }
     
     return () => {
       supabase.removeAllChannels();
     };
-  }, [tableId]);
+  }, [tableId, restaurantIdFromUrl]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (restaurantId: string) => {
     try {
       const { data: deviceOrders, error } = await supabase
         .from('orders')
@@ -66,6 +70,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           items:order_items(*)
         `)
         .eq('device_id', deviceId)
+        .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -76,15 +81,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const fetchTableOrders = async (tableId: string) => {
+  const fetchTableOrders = async (restaurantId: string, tableId: string) => {
     try {
-      console.log('Fetching orders for table:', tableId);
+      console.log('Fetching orders for restaurant:', restaurantId, 'table:', tableId);
       const { data, error } = await supabase
         .from('orders')
         .select(`
           *,
           items:order_items(*)
         `)
+        .eq('restaurant_id', restaurantId)
         .eq('table_id', tableId)
         .order('created_at', { ascending: false });
         
@@ -101,21 +107,21 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const subscribeToTableOrders = (tableId: string) => {
-    console.log('Setting up subscription for table:', tableId);
+  const subscribeToTableOrders = (restaurantId: string, tableId: string) => {
+    console.log('Setting up subscription for restaurant:', restaurantId, 'table:', tableId);
     const channel = supabase
-      .channel(`table-orders-${tableId}`)
+      .channel(`table-orders-${restaurantId}-${tableId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'orders',
-          filter: `table_id=eq.${tableId}`
+          filter: `restaurant_id=eq.${restaurantId} AND table_id=eq.${tableId}`
         },
         async (payload) => {
           console.log('Table orders changed:', payload);
-          await fetchTableOrders(tableId);
+          await fetchTableOrders(restaurantId, tableId);
         }
       )
       .subscribe((status) => {
@@ -193,7 +199,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           
           console.log('Order items inserted successfully');
           clearCart();
-          await fetchOrders();
+          await fetchOrders(restaurantId);
           toast.success('Order placed successfully!');
           return;
         }
@@ -254,9 +260,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       console.log('Order items inserted successfully');
       clearCart();
-      await fetchOrders();
+      await fetchOrders(restaurantId);
       if (tableId) {
-        await fetchTableOrders(tableId);
+        await fetchTableOrders(restaurantId, tableId);
       }
       toast.success('Order placed successfully!');
     } catch (error) {
