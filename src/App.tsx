@@ -72,9 +72,11 @@ const App = () => (
           <Route 
             path="/restaurant/:restaurantId/orders" 
             element={
-              <OrderProvider>
-                <OrderDashboard />
-              </OrderProvider>
+              <CartProvider>
+                <OrderProvider>
+                  <OrderDashboard />
+                </OrderProvider>
+              </CartProvider>
             } 
           />
           <Route path="*" element={<NotFound />} />
