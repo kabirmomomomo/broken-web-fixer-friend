@@ -9,23 +9,4 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-// Create a custom type for createClient to include our additional RPC function
-type CustomSupabaseClient = ReturnType<typeof createClient<Database>> & {
-  rpc: {
-    (
-      fn: 'create_function_if_not_exists',
-      params: { function_name: string; function_definition: string }
-    ): Promise<{ data: null; error: any }>;
-    (
-      fn: 'insert_table_if_not_exists',
-      params: { p_restaurant_id: string; p_table_number: number }
-    ): Promise<{ data: null; error: any }>;
-    (fn: string, params?: any): Promise<any>;
-  };
-}
-
-// Create and export the supabase client
-export const supabase = createClient<Database>(
-  SUPABASE_URL, 
-  SUPABASE_PUBLISHABLE_KEY
-) as CustomSupabaseClient;
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -11,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/sonner';
 import OrderBill from '@/components/menu/OrderBill';
-import { useOrders } from '@/contexts/OrderContext';
 
 interface OrderItem {
   id: string;
@@ -35,7 +35,7 @@ interface Order {
 const OrderDashboard = () => {
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const navigate = useNavigate();
-  const { orders, tableOrders, isLoading: ordersLoading, deleteTableOrder } = useOrders();
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
@@ -70,6 +70,7 @@ const OrderDashboard = () => {
       if (error) throw error;
       
       console.log('Orders fetched:', data);
+      setOrders(data || []);
     } catch (err: any) {
       console.error('Error fetching orders:', err);
       setError(err.message);
@@ -122,11 +123,15 @@ const OrderDashboard = () => {
   
   const deleteTableOrders = async (tableId: string) => {
     try {
-      const ordersToDelete = tableOrders.filter(order => order.table_id === tableId);
-      for (const order of ordersToDelete) {
-        await deleteTableOrder(order.id);
-      }
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('table_id', tableId);
+        
+      if (error) throw error;
+      
       toast.success(`All orders from Table ${tableId} deleted`);
+      fetchOrders();
     } catch (err: any) {
       console.error('Error deleting table orders:', err);
       toast.error('Failed to delete orders');
@@ -140,13 +145,13 @@ const OrderDashboard = () => {
     toast.success('Orders refreshed');
   };
 
-  // Use type assertion to ensure filteredOrders is treated as Order[]
   const filteredOrders = orders.filter(order => {
     if (activeTab === 'all') return true;
     if (activeTab === 'table') return !!order.table_id;
     return order.status === activeTab;
   });
   
+  // Group orders by table_id
   const ordersByTable = filteredOrders.reduce((acc, order) => {
     if (order.table_id) {
       if (!acc[order.table_id]) {
@@ -162,11 +167,12 @@ const OrderDashboard = () => {
     return acc;
   }, {} as Record<string, Order[]>);
   
+  // Log the results for debugging
   console.log('Filtered orders:', filteredOrders);
   console.log('Orders by table:', ordersByTable);
   console.log('Table IDs:', Object.keys(ordersByTable));
   
-  if (loading || ordersLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">

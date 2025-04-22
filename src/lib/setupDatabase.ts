@@ -1,4 +1,3 @@
-
 import { supabase } from './supabase';
 import { toast } from '@/components/ui/sonner';
 
@@ -95,49 +94,33 @@ export const setupDatabase = async () => {
       }
     }
 
-    // Create tables table using RPC
-    const { error: createTablesError } = await supabase.rpc(
-      'create_table_if_not_exists',
-      {
-        table_name: 'tables',
-        table_definition: `
-          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-          restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
-          table_number INTEGER NOT NULL,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-          UNIQUE(restaurant_id, table_number)
-        `
+    // Create tables table
+    const { data: tablesData, error: tablesError } = await supabase
+      .from('tables')
+      .select('count(*)', { count: 'exact' });
+
+    if (tablesError && tablesError.code === 'PGRST116') {
+      // Table doesn't exist, create it
+      const { error: createTablesError } = await supabase.rpc(
+        'create_table_if_not_exists',
+        {
+          table_name: 'tables',
+          table_definition: `
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+            table_number INTEGER NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+            UNIQUE(restaurant_id, table_number)
+          `
+        }
+      );
+
+      if (createTablesError) {
+        console.error('Error creating tables table:', createTablesError);
+        toast.error('Could not create tables table. Some features may not work.');
+        return false;
       }
-    );
-
-    if (createTablesError) {
-      console.error('Error creating tables table:', createTablesError);
-      toast.error('Could not create tables table. Some features may not work.');
-      return false;
-    }
-
-    // Create RPC function for inserting tables
-    const { error: createInsertTableRPCError } = await supabase.rpc(
-      'create_function_if_not_exists',
-      {
-        function_name: 'insert_table_if_not_exists',
-        function_definition: `
-          CREATE OR REPLACE FUNCTION insert_table_if_not_exists(p_restaurant_id UUID, p_table_number INTEGER)
-          RETURNS VOID AS $$
-          BEGIN
-            INSERT INTO tables (restaurant_id, table_number)
-            VALUES (p_restaurant_id, p_table_number)
-            ON CONFLICT (restaurant_id, table_number) DO NOTHING;
-          END;
-          $$ LANGUAGE plpgsql;
-        `
-      }
-    );
-
-    if (createInsertTableRPCError) {
-      console.error('Error creating insert_table_if_not_exists function:', createInsertTableRPCError);
-      // Continue anyway, as the function might already exist
     }
 
     // Create orders table with table_id reference
@@ -169,30 +152,6 @@ export const setupDatabase = async () => {
         toast.error('Could not create orders table. Some features may not work.');
         return false;
       }
-    }
-
-    // Create table_orders table for separate table order management
-    const { error: createTableOrdersError } = await supabase.rpc(
-      'create_table_if_not_exists',
-      {
-        table_name: 'table_orders',
-        table_definition: `
-          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-          restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
-          table_id INTEGER NOT NULL,
-          device_id TEXT NOT NULL,
-          total_amount DECIMAL(10,2) NOT NULL,
-          status TEXT NOT NULL DEFAULT 'placed',
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
-        `
-      }
-    );
-
-    if (createTableOrdersError) {
-      console.error('Error creating table_orders table:', createTableOrdersError);
-      toast.error('Could not create table_orders table. Some features may not work.');
-      return false;
     }
 
     // Create order_items table

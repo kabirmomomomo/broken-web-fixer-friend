@@ -30,7 +30,6 @@ interface OrderContextType {
   placeOrder: (restaurantId: string, tableId?: string) => Promise<void>;
   isLoading: boolean;
   tableOrders: Order[];
-  deleteTableOrder: (orderId: string) => Promise<void>;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -81,7 +80,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       console.log('Fetching orders for table:', tableId);
       const { data, error } = await supabase
-        .from('table_orders') // Using the new table_orders table
+        .from('orders')
         .select(`
           *,
           items:order_items(*)
@@ -111,7 +110,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         {
           event: '*',
           schema: 'public',
-          table: 'table_orders', // Updated to use table_orders
+          table: 'orders',
           filter: `table_id=eq.${tableId}`
         },
         async (payload) => {
@@ -124,24 +123,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       
     return channel;
-  };
-
-  const deleteTableOrder = async (orderId: string) => {
-    try {
-      const { error } = await supabase
-        .from('table_orders')
-        .delete()
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      // Only update the tableOrders state, not the main orders
-      setTableOrders(prev => prev.filter(order => order.id !== orderId));
-      toast.success('Order deleted successfully');
-    } catch (error) {
-      console.error('Error deleting table order:', error);
-      toast.error('Failed to delete order');
-    }
   };
 
   const placeOrder = async (restaurantId: string, tableId?: string) => {
@@ -157,19 +138,88 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log('Device ID:', deviceId);
       console.log('Cart items:', cartItems);
       
-      let orderData = {
+      // Check if the orders table has a table_id column
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('table_id')
+          .limit(1);
+          
+        if (error && error.message.includes('table_id')) {
+          console.log('Table ID column not found in orders table, placing order without table_id');
+          
+          const orderData = {
+            restaurant_id: restaurantId,
+            total_amount: getCartTotal(),
+            status: 'placed',
+            device_id: deviceId
+          };
+          
+          console.log('Order data to insert (without table_id):', orderData);
+          
+          const { data: order, error: orderError } = await supabase
+            .from('orders')
+            .insert(orderData)
+            .select()
+            .single();
+
+          if (orderError) {
+            console.error('Error inserting order:', orderError);
+            throw orderError;
+          }
+
+          console.log('Order inserted successfully:', order);
+          
+          const orderItems = cartItems.map(item => ({
+            order_id: order.id,
+            item_id: item.id,
+            item_name: item.name,
+            quantity: item.quantity,
+            price: parseFloat(item.selectedVariant ? item.selectedVariant.price : item.price),
+            variant_name: item.selectedVariant?.name,
+            variant_id: item.selectedVariant?.id
+          }));
+
+          console.log('Order items to insert:', orderItems);
+
+          const { error: itemsError } = await supabase
+            .from('order_items')
+            .insert(orderItems);
+
+          if (itemsError) {
+            console.error('Error inserting order items:', itemsError);
+            throw itemsError;
+          }
+          
+          console.log('Order items inserted successfully');
+          clearCart();
+          await fetchOrders();
+          toast.success('Order placed successfully!');
+          return;
+        }
+      } catch (checkError) {
+        console.log('Error checking for table_id column:', checkError);
+        // Continue with the attempt to place the order
+      }
+      
+      // If we get here, try with the table_id included (if provided)
+      const orderData: any = {
         restaurant_id: restaurantId,
         total_amount: getCartTotal(),
         status: 'placed',
-        device_id: deviceId,
-        table_id: tableId
+        device_id: deviceId
       };
-
-      // Determine which table to insert into based on whether it's a table order
-      const tableName = tableId ? 'table_orders' : 'orders';
+      
+      // Only add table_id if it exists and is not null/undefined/empty
+      if (tableId) {
+        orderData.table_id = tableId;
+        console.log('Adding table_id to order:', tableId);
+      }
+      
+      console.log('Order data to insert:', orderData);
       
       const { data: order, error: orderError } = await supabase
-        .from(tableName)
+        .from('orders')
         .insert(orderData)
         .select()
         .single();
@@ -204,14 +254,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       console.log('Order items inserted successfully');
       clearCart();
-      
-      // Update the appropriate state based on order type
+      await fetchOrders();
       if (tableId) {
         await fetchTableOrders(tableId);
-      } else {
-        await fetchOrders();
       }
-      
       toast.success('Order placed successfully!');
     } catch (error) {
       console.error('Error placing order:', error);
@@ -222,7 +268,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   return (
-    <OrderContext.Provider value={{ orders, tableOrders, placeOrder, isLoading, deleteTableOrder }}>
+    <OrderContext.Provider value={{ orders, tableOrders, placeOrder, isLoading }}>
       {children}
     </OrderContext.Provider>
   );
