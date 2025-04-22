@@ -4,10 +4,11 @@ import { format } from 'date-fns';
 import { useOrders } from '@/contexts/OrderContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Smartphone, Users } from 'lucide-react';
+import { Smartphone, Users, Store } from 'lucide-react';
 
 const TableOrders = () => {
   const { tableOrders } = useOrders();
+  
   // Calculate totals only if there are orders
   const totalAmount = tableOrders.length > 0 
     ? tableOrders.reduce((sum, order) => sum + Number(order.total_amount), 0)
@@ -18,8 +19,12 @@ const TableOrders = () => {
         sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0)
     : 0;
   
+  // Get restaurant ID (assuming all table orders have the same restaurant_id)
+  const restaurantId = tableOrders.length > 0 ? tableOrders[0].restaurant_id : '';
+  
   // Debug information
   console.log('TableOrders component - table orders:', tableOrders);
+  console.log('Restaurant ID for these table orders:', restaurantId);
   
   return (
     <Card className="w-full bg-gradient-to-br from-purple-50 to-white shadow-md border-purple-100">
@@ -35,10 +40,7 @@ const TableOrders = () => {
         </div>
         <div className="text-sm text-muted-foreground flex justify-between mt-2">
           <span className="flex items-center gap-1">
-            <Smartphone className="h-3 w-3" /> {tableOrders.length > 0 ? tableOrders.reduce((acc, order) => {
-              if (!acc.includes(order.device_id)) acc.push(order.device_id);
-              return acc;
-            }, [] as string[]).length : 0} Devices
+            <Store className="h-3 w-3" /> Restaurant: {restaurantId ? restaurantId.substring(0, 8) : 'N/A'}
           </span>
           <span>{totalItems} Items</span>
         </div>

@@ -63,6 +63,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const fetchOrders = async (restaurantId: string) => {
     try {
+      console.log('Fetching orders for restaurant:', restaurantId, 'device:', deviceId);
+      
       const { data: deviceOrders, error } = await supabase
         .from('orders')
         .select(`
@@ -74,6 +76,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('Device orders fetched:', deviceOrders?.length || 0);
       setOrders(deviceOrders || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -99,7 +103,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         throw error;
       }
       
-      console.log('Table orders fetched:', data);
+      console.log('Table orders fetched:', data?.length || 0);
       setTableOrders(data || []);
     } catch (error) {
       console.error('Error in fetchTableOrders:', error);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -122,22 +121,48 @@ const OrderDashboard = () => {
   };
   
   const deleteTableOrders = async (tableId: string) => {
-    if (!restaurantId) return;
+    if (!restaurantId) {
+      toast.error('Restaurant ID is missing');
+      return;
+    }
     
     try {
-      const { error } = await supabase
+      console.log(`Deleting orders for restaurant ${restaurantId}, table ${tableId}`);
+      
+      const { data: ordersToDelete, error: fetchError } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('restaurant_id', restaurantId)
+        .eq('table_id', tableId);
+        
+      if (fetchError) {
+        console.error('Error fetching orders to delete:', fetchError);
+        throw fetchError;
+      }
+      
+      if (!ordersToDelete || ordersToDelete.length === 0) {
+        toast.info(`No orders found for table ${tableId}`);
+        return;
+      }
+      
+      console.log(`Found ${ordersToDelete.length} orders to delete`);
+      
+      const { error: deleteError } = await supabase
         .from('orders')
         .delete()
         .eq('restaurant_id', restaurantId)
         .eq('table_id', tableId);
         
-      if (error) throw error;
+      if (deleteError) {
+        console.error('Error deleting table orders:', deleteError);
+        throw deleteError;
+      }
       
-      toast.success(`All orders from Table ${tableId} deleted`);
+      toast.success(`All orders from Table ${tableId} have been deleted`);
       fetchOrders();
     } catch (err: any) {
-      console.error('Error deleting table orders:', err);
-      toast.error('Failed to delete orders');
+      console.error('Error in deleteTableOrders:', err);
+      toast.error(`Failed to delete orders: ${err.message || 'Unknown error'}`);
     }
   };
   
@@ -154,7 +179,6 @@ const OrderDashboard = () => {
     return order.status === activeTab;
   });
   
-  // Group orders by table_id
   const ordersByTable = filteredOrders.reduce((acc, order) => {
     if (order.table_id) {
       if (!acc[order.table_id]) {
@@ -170,7 +194,6 @@ const OrderDashboard = () => {
     return acc;
   }, {} as Record<string, Order[]>);
   
-  // Log the results for debugging
   console.log('Filtered orders:', filteredOrders);
   console.log('Orders by table:', ordersByTable);
   console.log('Table IDs:', Object.keys(ordersByTable));
