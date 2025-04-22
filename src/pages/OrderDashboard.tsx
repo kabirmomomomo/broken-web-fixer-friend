@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -12,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/sonner';
 import OrderBill from '@/components/menu/OrderBill';
+import { useOrders } from '@/hooks/useOrders';
 
 interface OrderItem {
   id: string;
@@ -35,7 +35,7 @@ interface Order {
 const OrderDashboard = () => {
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { orders, tableOrders, isLoading: ordersLoading, deleteTableOrder } = useOrders();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
@@ -123,15 +123,11 @@ const OrderDashboard = () => {
   
   const deleteTableOrders = async (tableId: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('table_id', tableId);
-        
-      if (error) throw error;
-      
+      const ordersToDelete = tableOrders.filter(order => order.table_id === tableId);
+      for (const order of ordersToDelete) {
+        await deleteTableOrder(order.id);
+      }
       toast.success(`All orders from Table ${tableId} deleted`);
-      fetchOrders();
     } catch (err: any) {
       console.error('Error deleting table orders:', err);
       toast.error('Failed to delete orders');
@@ -151,7 +147,6 @@ const OrderDashboard = () => {
     return order.status === activeTab;
   });
   
-  // Group orders by table_id
   const ordersByTable = filteredOrders.reduce((acc, order) => {
     if (order.table_id) {
       if (!acc[order.table_id]) {
@@ -167,7 +162,6 @@ const OrderDashboard = () => {
     return acc;
   }, {} as Record<string, Order[]>);
   
-  // Log the results for debugging
   console.log('Filtered orders:', filteredOrders);
   console.log('Orders by table:', ordersByTable);
   console.log('Table IDs:', Object.keys(ordersByTable));
