@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { handleRelationDoesNotExistError } from "@/lib/setupDatabase";
+import ErrorState from "@/components/menu/ErrorState";
 
 interface TableQRDialogProps {
   restaurantId: string;
@@ -27,9 +28,61 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
   const [tableCount, setTableCount] = useState(20);
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [hasPermissionError, setHasPermissionError] = useState(false);
+  const [tableNumbers, setTableNumbers] = useState<number[]>([]);
+
+  // Instead of trying to create tables on component mount, just fetch existing table numbers
+  useEffect(() => {
+    fetchTableNumbers();
+  }, []);
+
+  const fetchTableNumbers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tables')
+        .select('table_number')
+        .eq('restaurant_id', restaurantId);
+      
+      if (error) {
+        // Check if it's a permission error
+        if (error.code === '42501' || error.message.includes('permission denied')) {
+          console.error('Permission error when fetching tables:', error);
+          setHasPermissionError(true);
+          return;
+        }
+        
+        if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
+          // Table doesn't exist yet, but that's ok for generating QR codes
+          console.log('Tables table does not exist yet');
+          // Default to generating QR codes for tableCount tables
+          setTableNumbers(Array.from({ length: tableCount }, (_, i) => i + 1));
+          return;
+        }
+        
+        console.error('Error fetching tables:', error);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        const numbers = data.map(t => t.table_number);
+        console.log('Table IDs:', numbers);
+        setTableNumbers(numbers);
+        // Update the table count to match the highest table number
+        const maxTableNumber = Math.max(...numbers);
+        setTableCount(maxTableNumber);
+      } else {
+        // No tables found, generate for default count
+        setTableNumbers(Array.from({ length: tableCount }, (_, i) => i + 1));
+      }
+    } catch (error) {
+      console.error('Exception during table fetch:', error);
+      // Continue with default table numbers for QR generation
+      setTableNumbers(Array.from({ length: tableCount }, (_, i) => i + 1));
+    }
+  };
 
   const updateTables = async (count: number) => {
-    if (isUpdating) return;
+    if (isUpdating || hasPermissionError) return;
     
     setIsUpdating(true);
     try {
@@ -53,6 +106,22 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
 
         if (checkError) {
           console.error('Error checking tables table:', checkError);
+          
+          // Check if it's a permission error
+          if (checkError.code === '42501' || checkError.message.includes('permission denied')) {
+            setHasPermissionError(true);
+            toast({
+              variant: "destructive",
+              title: "Insufficient permissions",
+              description: "You don't have permission to update tables. QR codes will still be generated."
+            });
+            
+            // Still generate QR codes for the specified number of tables
+            setTableNumbers(Array.from({ length: count }, (_, i) => i + 1));
+            setIsUpdating(false);
+            return;
+          }
+          
           toast({
             variant: "destructive",
             title: "Error updating tables",
@@ -63,6 +132,23 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         }
       } catch (error) {
         console.error('Error checking tables table:', error);
+        
+        // Check if it's a permission error
+        if (error instanceof Error && 
+            (error.message.includes('42501') || error.message.includes('permission denied'))) {
+          setHasPermissionError(true);
+          toast({
+            variant: "destructive",
+            title: "Insufficient permissions",
+            description: "You don't have permission to update tables. QR codes will still be generated."
+          });
+          
+          // Still generate QR codes for the specified number of tables
+          setTableNumbers(Array.from({ length: count }, (_, i) => i + 1));
+          setIsUpdating(false);
+          return;
+        }
+        
         // Try to set up the database
         const setupSuccess = await handleRelationDoesNotExistError(error);
         if (!setupSuccess) {
@@ -77,32 +163,38 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         }
       }
 
-      // Now, ensure the tables exist in the database using SQL queries directly
-      for (let i = 1; i <= count; i++) {
-        // Use an individual try-catch for each table to ensure one failure doesn't stop the rest
-        try {
-          // Instead of using rpc, use a direct SQL insert with ON CONFLICT DO UPDATE
-          const { error } = await supabase
-            .from('tables')
-            .upsert({
-              restaurant_id: restaurantId,
-              table_number: i
-            });
+      // Only try to update the database if we don't have a permission error
+      if (!hasPermissionError) {
+        // Now, ensure the tables exist in the database using SQL queries directly
+        for (let i = 1; i <= count; i++) {
+          // Use an individual try-catch for each table to ensure one failure doesn't stop the rest
+          try {
+            // Instead of using rpc, use a direct SQL insert with ON CONFLICT DO UPDATE
+            const { error } = await supabase
+              .from('tables')
+              .upsert({
+                restaurant_id: restaurantId,
+                table_number: i
+              });
 
-          if (error) {
-            console.error('Error upserting table:', error);
-            // Continue with other tables instead of stopping completely
+            if (error) {
+              console.error('Error upserting table:', error);
+              // Continue with other tables instead of stopping completely
+            }
+          } catch (tableError) {
+            console.error('Exception during table upsert:', tableError);
+            // Continue with other tables
           }
-        } catch (tableError) {
-          console.error('Exception during table upsert:', tableError);
-          // Continue with other tables
         }
       }
       
+      // Update the UI with new table numbers regardless of database success
+      setTableNumbers(Array.from({ length: count }, (_, i) => i + 1));
+      
       // Let the user know the process is complete
       toast({
-        title: "Tables updated",
-        description: `Successfully configured ${count} tables`
+        title: "QR codes generated",
+        description: `Ready to download QR codes for ${count} tables`
       });
     } catch (error) {
       console.error('Error updating tables:', error);
@@ -127,13 +219,14 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
       return;
     }
     setTableCount(newCount);
-    await updateTables(newCount);
+    // Generate new QR codes for the updated count
+    setTableNumbers(Array.from({ length: newCount }, (_, i) => i + 1));
+    
+    // Only try to update the database if we don't have a permission error
+    if (!hasPermissionError) {
+      await updateTables(newCount);
+    }
   };
-
-  useEffect(() => {
-    // Initialize tables when the component mounts
-    updateTables(tableCount);
-  }, []);
 
   const downloadQRCode = async (tableId: string) => {
     const element = document.getElementById(`qr-code-${tableId}`);
@@ -162,6 +255,16 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
           </DialogDescription>
         </DialogHeader>
 
+        {hasPermissionError && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-sm">
+            <p className="font-medium">Limited functionality mode</p>
+            <p className="mt-1">
+              Due to database permission restrictions, table information cannot be saved.
+              You can still generate and download QR codes for your tables.
+            </p>
+          </div>
+        )}
+
         <div className="flex items-center gap-4 mb-4">
           <div className="flex-1 space-y-2">
             <Label htmlFor="tableCount">Number of Tables</Label>
@@ -184,7 +287,7 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
 
         <ScrollArea className="h-[60vh] w-full rounded-md">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4">
-            {Array.from({ length: tableCount }, (_, i) => i + 1).map((tableNumber) => (
+            {tableNumbers.map((tableNumber) => (
               <div
                 key={tableNumber}
                 className="p-4 border rounded-lg bg-white flex flex-col items-center space-y-3"
