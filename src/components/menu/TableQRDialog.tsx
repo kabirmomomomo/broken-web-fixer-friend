@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
@@ -71,8 +70,11 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         // Update the table count to match the total number of tables
         setTableCount(numbers.length);
       } else {
-        // No tables found, generate for default count
+        // If no tables exist in the database yet, create the default number
         setTableNumbers(Array.from({ length: tableCount }, (_, i) => i + 1));
+        // Create the initial tables in the database
+        await ensureTablesTableExists();
+        await updateTables(tableCount);
       }
     } catch (error) {
       console.error('Exception during table fetch:', error);
@@ -110,22 +112,31 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         const startingNumber = existingTableNumbers.length > 0 ? 
           Math.max(...existingTableNumbers) + 1 : 1;
         
+        const newTables = [];
         for (let i = 0; i < newTablesCount; i++) {
           const tableNumber = startingNumber + i;
-          try {
-            const { error } = await supabase
-              .from('tables')
-              .upsert({
-                restaurant_id: restaurantId,
-                table_number: tableNumber
-              });
+          newTables.push({
+            restaurant_id: restaurantId,
+            table_number: tableNumber
+          });
+        }
+        
+        // Bulk insert new tables for better performance
+        if (newTables.length > 0) {
+          const { error } = await supabase
+            .from('tables')
+            .upsert(newTables);
               
-            if (error) {
-              console.error(`Error adding table ${tableNumber}:`, error);
-              // Continue with other tables instead of stopping completely
+          if (error) {
+            console.error(`Error adding tables:`, error);
+            // Try individual inserts as fallback if bulk insert fails
+            for (const tableData of newTables) {
+              try {
+                await supabase.from('tables').upsert(tableData);
+              } catch (e) {
+                console.error(`Error adding individual table ${tableData.table_number}:`, e);
+              }
             }
-          } catch (error) {
-            console.error(`Exception adding table ${tableNumber}:`, error);
           }
         }
       } else if (count < existingTableNumbers.length) {
@@ -133,27 +144,46 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         const tablesToRemove = existingTableNumbers.length - count;
         const sortedExistingTables = [...existingTables || []].sort((a, b) => b.table_number - a.table_number);
         
-        for (let i = 0; i < tablesToRemove; i++) {
-          if (sortedExistingTables[i]) {
-            try {
-              const { error } = await supabase
-                .from('tables')
-                .delete()
-                .eq('id', sortedExistingTables[i].id);
-                
-              if (error) {
-                console.error(`Error removing table ${sortedExistingTables[i].table_number}:`, error);
+        // Get IDs of tables to remove
+        const tableIdsToRemove = sortedExistingTables.slice(0, tablesToRemove).map(t => t.id);
+        
+        if (tableIdsToRemove.length > 0) {
+          // Bulk delete tables
+          const { error } = await supabase
+            .from('tables')
+            .delete()
+            .in('id', tableIdsToRemove);
+            
+          if (error) {
+            console.error(`Error removing tables:`, error);
+            // Try individual deletes as fallback
+            for (const tableId of tableIdsToRemove) {
+              try {
+                await supabase.from('tables').delete().eq('id', tableId);
+              } catch (e) {
+                console.error(`Error removing individual table ${tableId}:`, e);
               }
-            } catch (error) {
-              console.error(`Exception removing table ${sortedExistingTables[i].table_number}:`, error);
             }
           }
         }
       }
       
-      // Update the UI with new table numbers
-      const newTableNumbers = Array.from({ length: count }, (_, i) => i + 1);
-      setTableNumbers(newTableNumbers);
+      // Update the UI with new table numbers - fetch from DB to ensure consistency
+      const { data: updatedTables } = await supabase
+        .from('tables')
+        .select('table_number')
+        .eq('restaurant_id', restaurantId)
+        .order('table_number', { ascending: true });
+      
+      if (updatedTables && updatedTables.length > 0) {
+        const updatedNumbers = updatedTables.map(t => t.table_number);
+        setTableNumbers(updatedNumbers);
+        setTableCount(updatedNumbers.length);
+      } else {
+        // Fallback: use the count parameter to generate numbers if DB fetch fails
+        setTableNumbers(Array.from({ length: count }, (_, i) => i + 1));
+        setTableCount(count);
+      }
       
       // Let the user know the process is complete
       toast({
@@ -165,8 +195,7 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
       
       // Even if DB operations fail, still update the UI to show the requested number of tables
       setTableNumbers(Array.from({ length: count }, (_, i) => i + 1));
-      
-      // Don't show an error toast if we at least updated the UI
+      setTableCount(count);
     } finally {
       setIsUpdating(false);
     }
