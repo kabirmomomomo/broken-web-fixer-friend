@@ -372,4 +372,3 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
 };
 
 export default TableQRDialog;
-
