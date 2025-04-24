@@ -29,88 +29,101 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [tableNumbers, setTableNumbers] = useState<number[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  // Load table count when dialog opens
   useEffect(() => {
-    if (isDialogOpen) {
-      loadTableCount();
+    const initializeTables = async () => {
+      if (!initialLoadDone && restaurantId) {
+        await fetchTableNumbers(false);
+        setInitialLoadDone(true);
+      }
+    };
+    
+    initializeTables();
+  }, [restaurantId, initialLoadDone]);
+
+  useEffect(() => {
+    if (isDialogOpen && initialLoadDone) {
+      fetchTableNumbers(true);
     }
   }, [isDialogOpen]);
 
-  const loadTableCount = async () => {
+  const fetchTableNumbers = async (isDialogOpening: boolean) => {
     try {
-      setIsUpdating(true);
+      if (isDialogOpening) {
+        setIsUpdating(true);
+      }
       
-      // First try to get the table count from the restaurants table
+      const { data, error } = await supabase
+        .from('tables')
+        .select('table_number')
+        .eq('restaurant_id', restaurantId)
+        .order('table_number', { ascending: true });
+      
+      if (error) {
+        if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
+          console.log('Tables table does not exist yet');
+          
+          // Get the current table count from the database
+          const { data: restaurantData, error: restaurantError } = await supabase
+            .from('restaurants')
+            .select('table_count')
+            .eq('id', restaurantId)
+            .single();
+            
+          const currentCount = restaurantData?.table_count || 1;
+          setTableNumbers(Array.from({ length: currentCount }, (_, i) => i + 1));
+          setTableCount(currentCount);
+          
+          if (!isDialogOpening) {
+            await ensureTablesTableExists();
+            await updateTables(currentCount);
+          }
+          
+          if (isDialogOpening) setIsUpdating(false);
+          return;
+        }
+        
+        console.error('Error fetching tables:', error);
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        const numbers = data.map(t => t.table_number);
+        console.log('Table numbers from database:', numbers);
+        setTableNumbers(numbers);
+        setTableCount(numbers.length);
+      } else {
+        // Get the current table count from the database
+        const { data: restaurantData, error: restaurantError } = await supabase
+          .from('restaurants')
+          .select('table_count')
+          .eq('id', restaurantId)
+          .single();
+          
+        const currentCount = restaurantData?.table_count || 1;
+        setTableNumbers(Array.from({ length: currentCount }, (_, i) => i + 1));
+        setTableCount(currentCount);
+        
+        if (!isDialogOpening) {
+          await ensureTablesTableExists();
+          await updateTables(currentCount);
+        }
+      }
+    } catch (error) {
+      console.error('Exception during table fetch:', error);
+      // Get the current table count from the database
       const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
         .select('table_count')
         .eq('id', restaurantId)
         .single();
         
-      if (restaurantError) {
-        console.error('Error fetching restaurant table count:', restaurantError);
-        throw restaurantError;
-      }
-      
       const currentCount = restaurantData?.table_count || 1;
+      setTableNumbers(Array.from({ length: currentCount }, (_, i) => i + 1));
       setTableCount(currentCount);
-      
-      // Then fetch the actual table numbers
-      const { data: tablesData, error: tablesError } = await supabase
-        .from('tables')
-        .select('table_number')
-        .eq('restaurant_id', restaurantId)
-        .order('table_number', { ascending: true });
-        
-      if (tablesError) {
-        if (tablesError.code === 'PGRST116' || tablesError.message.includes('does not exist')) {
-          // If tables table doesn't exist, create it and initialize tables
-          await ensureTablesTableExists();
-          await initializeTables(currentCount);
-        } else {
-          console.error('Error fetching tables:', tablesError);
-          throw tablesError;
-        }
-      } else if (tablesData && tablesData.length > 0) {
-        const numbers = tablesData.map(t => t.table_number);
-        setTableNumbers(numbers);
-      } else {
-        // If no tables exist, initialize them
-        await initializeTables(currentCount);
-      }
-    } catch (error) {
-      console.error('Error loading table count:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load table count. Please try again."
-      });
     } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const initializeTables = async (count: number) => {
-    try {
-      const newTables = Array.from({ length: count }, (_, i) => ({
-        restaurant_id: restaurantId,
-        table_number: i + 1
-      }));
-      
-      const { error } = await supabase
-        .from('tables')
-        .upsert(newTables);
-        
-      if (error) {
-        console.error('Error initializing tables:', error);
-        throw error;
-      }
-      
-      setTableNumbers(Array.from({ length: count }, (_, i) => i + 1));
-    } catch (error) {
-      console.error('Error in initializeTables:', error);
-      throw error;
+      if (isDialogOpening) setIsUpdating(false);
     }
   };
 
@@ -119,7 +132,9 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
     
     setIsUpdating(true);
     try {
-      // First update the table count in the restaurants table
+      await ensureTablesTableExists();
+      
+      // Update the table count in the restaurants table
       const { error: updateError } = await supabase
         .from('restaurants')
         .update({ table_count: count })
@@ -130,7 +145,6 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         throw updateError;
       }
       
-      // Then update the actual tables
       const { data: existingTables, error: fetchError } = await supabase
         .from('tables')
         .select('id, table_number')
@@ -139,13 +153,11 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         
       if (fetchError && fetchError.code !== 'PGRST116') {
         console.error('Error fetching existing tables:', fetchError);
-        throw fetchError;
       }
       
       const existingTableNumbers = existingTables ? existingTables.map(t => t.table_number) : [];
       
       if (count > existingTableNumbers.length) {
-        // Add new tables
         const newTablesCount = count - existingTableNumbers.length;
         const startingNumber = existingTableNumbers.length > 0 ? 
           Math.max(...existingTableNumbers) + 1 : 1;
@@ -166,11 +178,16 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
               
           if (error) {
             console.error(`Error adding tables:`, error);
-            throw error;
+            for (const tableData of newTables) {
+              try {
+                await supabase.from('tables').upsert(tableData);
+              } catch (e) {
+                console.error(`Error adding individual table ${tableData.table_number}:`, e);
+              }
+            }
           }
         }
       } else if (count < existingTableNumbers.length) {
-        // Remove excess tables
         const tablesToRemove = existingTableNumbers.length - count;
         const sortedExistingTables = [...existingTables || []].sort((a, b) => b.table_number - a.table_number);
         
@@ -184,14 +201,31 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
             
           if (error) {
             console.error(`Error removing tables:`, error);
-            throw error;
+            for (const tableId of tableIdsToRemove) {
+              try {
+                await supabase.from('tables').delete().eq('id', tableId);
+              } catch (e) {
+                console.error(`Error removing individual table ${tableId}:`, e);
+              }
+            }
           }
         }
       }
       
-      // Update local state
-      setTableNumbers(Array.from({ length: count }, (_, i) => i + 1));
-      setTableCount(count);
+      const { data: updatedTables } = await supabase
+        .from('tables')
+        .select('table_number')
+        .eq('restaurant_id', restaurantId)
+        .order('table_number', { ascending: true });
+      
+      if (updatedTables && updatedTables.length > 0) {
+        const updatedNumbers = updatedTables.map(t => t.table_number);
+        setTableNumbers(updatedNumbers);
+        setTableCount(updatedNumbers.length);
+      } else {
+        setTableNumbers(Array.from({ length: count }, (_, i) => i + 1));
+        setTableCount(count);
+      }
       
       toast({
         title: "QR codes updated",
@@ -199,11 +233,9 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
       });
     } catch (error) {
       console.error('Error updating tables:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update tables. Please try again."
-      });
+      
+      setTableNumbers(Array.from({ length: count }, (_, i) => i + 1));
+      setTableCount(count);
     } finally {
       setIsUpdating(false);
     }
