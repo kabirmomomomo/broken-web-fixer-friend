@@ -64,20 +64,13 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
           console.log('Tables table does not exist yet');
           
-          // Get the current table count from the database
-          const { data: restaurantData, error: restaurantError } = await supabase
-            .from('restaurants')
-            .select('table_count')
-            .eq('id', restaurantId)
-            .single();
-            
-          const currentCount = restaurantData?.table_count || 1;
-          setTableNumbers(Array.from({ length: currentCount }, (_, i) => i + 1));
-          setTableCount(currentCount);
+          const defaultCount = tableCount || 20;
+          setTableNumbers(Array.from({ length: defaultCount }, (_, i) => i + 1));
+          if (tableCount === null) setTableCount(defaultCount);
           
           if (!isDialogOpening) {
             await ensureTablesTableExists();
-            await updateTables(currentCount);
+            await updateTables(defaultCount);
           }
           
           if (isDialogOpening) setIsUpdating(false);
@@ -85,43 +78,35 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
         }
         
         console.error('Error fetching tables:', error);
-        throw error;
+        const defaultCount = tableCount || 20;
+        setTableNumbers(Array.from({ length: defaultCount }, (_, i) => i + 1));
+        if (tableCount === null) setTableCount(defaultCount);
+        
+        if (isDialogOpening) setIsUpdating(false);
+        return;
       }
       
       if (data && data.length > 0) {
         const numbers = data.map(t => t.table_number);
         console.log('Table numbers from database:', numbers);
         setTableNumbers(numbers);
+        
         setTableCount(numbers.length);
       } else {
-        // Get the current table count from the database
-        const { data: restaurantData, error: restaurantError } = await supabase
-          .from('restaurants')
-          .select('table_count')
-          .eq('id', restaurantId)
-          .single();
-          
-        const currentCount = restaurantData?.table_count || 1;
-        setTableNumbers(Array.from({ length: currentCount }, (_, i) => i + 1));
-        setTableCount(currentCount);
+        const defaultCount = tableCount || 20;
+        setTableNumbers(Array.from({ length: defaultCount }, (_, i) => i + 1));
+        if (tableCount === null) setTableCount(defaultCount);
         
         if (!isDialogOpening) {
           await ensureTablesTableExists();
-          await updateTables(currentCount);
+          await updateTables(defaultCount);
         }
       }
     } catch (error) {
       console.error('Exception during table fetch:', error);
-      // Get the current table count from the database
-      const { data: restaurantData, error: restaurantError } = await supabase
-        .from('restaurants')
-        .select('table_count')
-        .eq('id', restaurantId)
-        .single();
-        
-      const currentCount = restaurantData?.table_count || 1;
-      setTableNumbers(Array.from({ length: currentCount }, (_, i) => i + 1));
-      setTableCount(currentCount);
+      const defaultCount = tableCount || 20;
+      setTableNumbers(Array.from({ length: defaultCount }, (_, i) => i + 1));
+      if (tableCount === null) setTableCount(defaultCount);
     } finally {
       if (isDialogOpening) setIsUpdating(false);
     }
@@ -133,17 +118,6 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
     setIsUpdating(true);
     try {
       await ensureTablesTableExists();
-      
-      // Update the table count in the restaurants table
-      const { error: updateError } = await supabase
-        .from('restaurants')
-        .update({ table_count: count })
-        .eq('id', restaurantId);
-        
-      if (updateError) {
-        console.error('Error updating table count:', updateError);
-        throw updateError;
-      }
       
       const { data: existingTables, error: fetchError } = await supabase
         .from('tables')
