@@ -88,7 +88,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeFromCart(item.id)}
+                        onClick={() => removeFromCart(item.id, item.selectedVariant?.id)}
                         className="h-8 w-8 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                       >
                         <X className="h-4 w-4" />
@@ -100,7 +100,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity - 1, item.selectedVariant?.id)}
                           className="h-8 w-8 p-0 rounded-full text-purple-700 hover:text-purple-900 hover:bg-purple-100"
                           disabled={item.quantity <= 1}
                         >
@@ -111,7 +111,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity + 1, item.selectedVariant?.id)}
                           className="h-8 w-8 p-0 rounded-full text-purple-700 hover:text-purple-900 hover:bg-purple-100"
                         >
                           <Plus className="h-3 w-3" />
