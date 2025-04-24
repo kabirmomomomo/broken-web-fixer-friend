@@ -16,8 +16,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
-import { handleRelationDoesNotExistError } from "@/lib/setupDatabase";
-import ErrorState from "@/components/menu/ErrorState";
 
 interface TableQRDialogProps {
   restaurantId: string;
@@ -37,296 +35,197 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
     }
   }, [isDialogOpen]);
 
-  const checkDatabaseAccess = async () => {
-    try {
-      // Try a simple select query to check if we can access the database
-      const { data, error } = await supabase
-        .from('restaurants')
-        .select('id')
-        .limit(1);
-
-      if (error) {
-        console.error('Database access check failed:', error);
-        return false;
-      }
-      return true;
-    } catch (error) {
-      console.error('Database access check error:', error);
-      return false;
-    }
-  };
-
-  const ensureTableCountColumn = async () => {
-    try {
-      console.log('Ensuring table_count column exists...');
-      
-      // Add table_count column if it doesn't exist
-      const { error } = await supabase.rpc('execute_sql', {
-        sql: `
-          DO $$ 
-          BEGIN 
-            IF NOT EXISTS (
-              SELECT 1 
-              FROM information_schema.columns 
-              WHERE table_name = 'restaurants' 
-              AND column_name = 'table_count'
-            ) THEN 
-              ALTER TABLE restaurants 
-              ADD COLUMN table_count INTEGER DEFAULT 1;
-            END IF;
-          END $$;
-        `
-      });
-
-      if (error) {
-        console.error('Error adding table_count column:', error);
-        throw error;
-      }
-      
-      // Ensure the restaurant has a table_count value
-      const { error: updateError } = await supabase
-        .from('restaurants')
-        .update({ table_count: 1 })
-        .eq('id', restaurantId)
-        .is('table_count', null);
-        
-      if (updateError) {
-        console.error('Error initializing table_count:', updateError);
-        throw updateError;
-      }
-    } catch (error) {
-      console.error('Failed to ensure table_count column:', error);
-      throw error;
-    }
-  };
-
   const loadTableCount = async () => {
-    if (!restaurantId) {
-      console.error('No restaurant ID provided');
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Restaurant ID is missing."
-      });
-      return;
-    }
-
     try {
       setIsUpdating(true);
-      console.log('Starting table configuration load...', { restaurantId });
-
-      // First, try to get the restaurant data
-      const { data: restaurant, error: restaurantError } = await supabase
+      
+      // First try to get the table count from the restaurants table
+      const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
-        .select('*')
+        .select('table_count')
         .eq('id', restaurantId)
         .single();
-
+        
       if (restaurantError) {
-        console.error('Error fetching restaurant:', restaurantError);
-        // If the restaurant doesn't exist, create it with default values
-        const { error: insertError } = await supabase
-          .from('restaurants')
-          .upsert({
-            id: restaurantId,
-            table_count: 1,
-            updated_at: new Date().toISOString()
-          });
-
-        if (insertError) {
-          console.error('Error creating restaurant record:', insertError);
-          throw insertError;
-        }
-        
-        setTableCount(1);
-        setTableNumbers([1]);
-        
-        // Create initial table
-        await createInitialTables(1);
-        return;
+        console.error('Error fetching restaurant table count:', restaurantError);
+        throw restaurantError;
       }
-
-      const tableCount = restaurant?.table_count || 1;
-      console.log('Retrieved table count:', tableCount);
-
-      // Get or create tables
-      const { data: tables, error: tablesError } = await supabase
+      
+      const currentCount = restaurantData?.table_count || 1;
+      
+      // Then fetch the actual table numbers
+      const { data: tablesData, error: tablesError } = await supabase
         .from('tables')
         .select('table_number')
         .eq('restaurant_id', restaurantId)
         .order('table_number', { ascending: true });
-
+        
       if (tablesError) {
         console.error('Error fetching tables:', tablesError);
-        // Create tables if they don't exist
-        await createInitialTables(tableCount);
-      } else if (!tables || tables.length === 0) {
-        // Create initial tables if none exist
-        await createInitialTables(tableCount);
-      } else {
-        // Use existing table numbers
-        setTableNumbers(tables.map(t => t.table_number));
-        setTableCount(tableCount);
+        throw tablesError;
       }
+      
+      if (!tablesData || tablesData.length === 0) {
+        // Initialize tables if none exist
+        const newTables = Array.from({ length: currentCount }, (_, i) => ({
+          restaurant_id: restaurantId,
+          table_number: i + 1
+        }));
 
-      console.log('Table configuration loaded successfully');
-
-    } catch (error: any) {
-      console.error('Failed to load table configuration:', error);
+        // Insert tables one by one to avoid conflicts
+        for (const table of newTables) {
+          const { error: insertError } = await supabase
+            .from('tables')
+            .insert([table]);
+            
+          if (insertError) {
+            console.error('Error initializing table:', insertError);
+            // If this table number exists, try the next available number
+            if (insertError.code === '23505') {
+              continue;
+            }
+            throw insertError;
+          }
+        }
+        
+        // Fetch the actual table numbers after initialization
+        const { data: updatedData, error: refreshError } = await supabase
+          .from('tables')
+          .select('table_number')
+          .eq('restaurant_id', restaurantId)
+          .order('table_number', { ascending: true });
+          
+        if (refreshError) {
+          console.error('Error refreshing table numbers:', refreshError);
+          throw refreshError;
+        }
+        
+        setTableNumbers(updatedData?.map(t => t.table_number) || []);
+      } else {
+        setTableNumbers(tablesData.map(t => t.table_number));
+      }
+      
+      setTableCount(currentCount);
+    } catch (error) {
+      console.error('Error loading table count:', error);
       setTableCount(1);
       setTableNumbers([1]);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to load table configuration. Please try again."
+        description: "Failed to load table count. Using default value of 1."
       });
     } finally {
       setIsUpdating(false);
     }
   };
 
-  const createInitialTables = async (count: number) => {
-    try {
-      console.log('Creating initial tables:', count);
-      
-      // First, delete any existing tables for this restaurant to avoid conflicts
-      const { error: deleteError } = await supabase
-        .from('tables')
-        .delete()
-        .eq('restaurant_id', restaurantId);
-
-      if (deleteError) {
-        console.error('Error deleting existing tables:', deleteError);
-        throw deleteError;
-      }
-
-      // Create tables in smaller batches to avoid potential conflicts
-      const batchSize = 10;
-      for (let i = 0; i < count; i += batchSize) {
-        const batchCount = Math.min(batchSize, count - i);
-        const tables = Array.from({ length: batchCount }, (_, index) => ({
-          restaurant_id: restaurantId,
-          table_number: i + index + 1,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }));
-
-        const { error } = await supabase
-          .from('tables')
-          .insert(tables);
-
-        if (error) {
-          console.error(`Error creating tables batch ${i}-${i + batchCount}:`, error);
-          throw error;
-        }
-      }
-
-      setTableNumbers(Array.from({ length: count }, (_, i) => i + 1));
-      console.log('Initial tables created successfully');
-    } catch (error) {
-      console.error('Error in createInitialTables:', error);
-      throw error;
-    }
-  };
-
   const updateTables = async (count: number) => {
     if (isUpdating || count === null || count < 1) return;
-
+    
+    setIsUpdating(true);
     try {
-      setIsUpdating(true);
-      console.log('Updating tables to count:', count);
-
-      // First update restaurant table count
+      // Update the restaurant's table count
       const { error: updateError } = await supabase
         .from('restaurants')
-        .update({
-          table_count: count,
-          updated_at: new Date().toISOString()
-        })
+        .update({ table_count: count })
         .eq('id', restaurantId);
-
+        
       if (updateError) {
-        console.error('Error updating restaurant:', updateError);
+        console.error('Error updating table count:', updateError);
         throw updateError;
       }
-
+      
       // Get current tables
       const { data: existingTables, error: fetchError } = await supabase
         .from('tables')
         .select('id, table_number')
         .eq('restaurant_id', restaurantId)
         .order('table_number', { ascending: true });
-
+        
       if (fetchError) {
-        console.error('Error fetching tables:', fetchError);
-        // If tables don't exist, create them
-        await createInitialTables(count);
-      } else {
-        const currentCount = existingTables?.length || 0;
+        console.error('Error fetching existing tables:', fetchError);
+        throw fetchError;
+      }
 
-        if (count > currentCount) {
-          // Add new tables one by one to avoid conflicts
-          for (let i = currentCount + 1; i <= count; i++) {
+      const existingTableNumbers = existingTables?.map(t => t.table_number) || [];
+      
+      if (count > existingTableNumbers.length) {
+        // Add new tables
+        const newTablesCount = count - existingTableNumbers.length;
+        let nextNumber = existingTableNumbers.length > 0 ? 
+          Math.max(...existingTableNumbers) + 1 : 1;
+
+        // Add tables one by one to handle conflicts
+        for (let i = 0; i < newTablesCount; i++) {
+          let inserted = false;
+          while (!inserted && nextNumber <= 1000) { // Prevent infinite loop
             const { error: insertError } = await supabase
               .from('tables')
-              .insert({
+              .insert([{
                 restaurant_id: restaurantId,
-                table_number: i,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              });
-
-            if (insertError) {
-              console.error(`Error adding table ${i}:`, insertError);
+                table_number: nextNumber
+              }]);
+              
+            if (!insertError) {
+              inserted = true;
+            } else if (insertError.code === '23505') {
+              // If this number exists, try the next one
+              nextNumber++;
+            } else {
+              console.error('Error adding table:', insertError);
               throw insertError;
             }
           }
-        } else if (count < currentCount) {
-          // Remove excess tables starting from highest number
-          const tablesToRemove = existingTables!
-            .sort((a, b) => b.table_number - a.table_number)
-            .slice(0, currentCount - count)
-            .map(t => t.id);
-
+          if (!inserted) {
+            throw new Error('Could not find available table number');
+          }
+        }
+      } else if (count < existingTableNumbers.length) {
+        // Remove excess tables starting from highest number
+        const tablesToRemove = existingTableNumbers.length - count;
+        const sortedExistingTables = [...existingTables].sort((a, b) => b.table_number - a.table_number);
+        
+        for (let i = 0; i < tablesToRemove; i++) {
+          const tableToRemove = sortedExistingTables[i];
           const { error: deleteError } = await supabase
             .from('tables')
             .delete()
-            .in('id', tablesToRemove);
-
+            .eq('id', tableToRemove.id);
+            
           if (deleteError) {
-            console.error('Error removing tables:', deleteError);
+            console.error('Error removing table:', deleteError);
             throw deleteError;
           }
         }
       }
-
-      // Fetch final state to ensure UI is in sync
-      const { data: finalTables, error: finalFetchError } = await supabase
+      
+      // Fetch final table numbers
+      const { data: updatedTables, error: refreshError } = await supabase
         .from('tables')
         .select('table_number')
         .eq('restaurant_id', restaurantId)
         .order('table_number', { ascending: true });
-
-      if (finalFetchError) {
-        console.error('Error fetching final table state:', finalFetchError);
-      } else {
-        setTableNumbers(finalTables?.map(t => t.table_number) || []);
+        
+      if (refreshError) {
+        console.error('Error refreshing table numbers:', refreshError);
+        throw refreshError;
       }
-
-      // Update local state
+      
+      setTableNumbers(updatedTables?.map(t => t.table_number) || []);
       setTableCount(count);
-
+      
       toast({
         title: "Success",
-        description: `Updated to ${count} tables successfully`
+        description: `Updated to ${count} tables for this restaurant`
       });
-
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating tables:', error);
+      await loadTableCount();
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to update tables. Please try again."
+        description: "Failed to update tables. Please try again."
       });
     } finally {
       setIsUpdating(false);
