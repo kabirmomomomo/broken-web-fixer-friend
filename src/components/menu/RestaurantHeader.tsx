@@ -1,6 +1,6 @@
-
 import React from "react";
-import { Clock, MapPin, Phone, Wifi } from "lucide-react";
+import { Clock, MapPin, Phone, Wifi, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface RestaurantHeaderProps {
   name: string;
@@ -42,6 +42,17 @@ const RestaurantHeader: React.FC<RestaurantHeaderProps> = ({
             {name}
           </h1>
           <p className="text-xs sm:text-sm text-gray-600 mb-2">{description}</p>
+          {google_review_link && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 text-xs sm:text-sm"
+              onClick={() => window.open(google_review_link, '_blank')}
+            >
+              <Star className="h-3 w-3 mr-1" />
+              Leave a Review
+            </Button>
+          )}
         </div>
       </div>
       
