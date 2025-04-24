@@ -22,7 +22,6 @@ export const setupDatabase = async () => {
             name TEXT NOT NULL,
             description TEXT,
             user_id UUID,
-            table_count INTEGER DEFAULT 1,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
           `
