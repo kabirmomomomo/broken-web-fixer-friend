@@ -1,4 +1,3 @@
-
 import { supabase } from './supabase';
 import { toast } from '@/components/ui/sonner';
 
@@ -192,4 +191,86 @@ export const handleRelationDoesNotExistError = async (error: any): Promise<boole
     return await setupDatabase();
   }
   return false;
+};
+
+export const handleTableConstraints = async () => {
+  try {
+    // First create the tables table if it doesn't exist
+    const { error: createError } = await supabase.rpc(
+      'create_table_if_not_exists',
+      {
+        table_name: 'tables',
+        table_definition: `
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+          table_number INTEGER NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+        `
+      }
+    );
+
+    if (createError) {
+      console.error('Error creating tables table:', createError);
+      return false;
+    }
+
+    // Create a temporary table
+    const { error: tempError } = await supabase
+      .from('tables_temp')
+      .insert({ id: '00000000-0000-0000-0000-000000000000', restaurant_id: '00000000-0000-0000-0000-000000000000', table_number: 0 })
+      .select();
+
+    // If error is not about table existing, return false
+    if (tempError && !tempError.message.includes('does not exist')) {
+      console.error('Error with temporary operation:', tempError);
+      return false;
+    }
+
+    // Copy data to temporary table
+    const { error: copyError } = await supabase.rpc(
+      'create_table_if_not_exists',
+      {
+        table_name: 'tables_temp',
+        table_definition: `
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          restaurant_id UUID NOT NULL,
+          table_number INTEGER NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+        `
+      }
+    );
+
+    if (copyError) {
+      console.error('Error creating temporary table:', copyError);
+      return false;
+    }
+
+    // Drop the old table and recreate it with correct constraints
+    const { error: recreateError } = await supabase.rpc(
+      'create_table_if_not_exists',
+      {
+        table_name: 'tables',
+        table_definition: `
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+          table_number INTEGER NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+          UNIQUE(restaurant_id, table_number)
+        `
+      }
+    );
+
+    if (recreateError) {
+      console.error('Error recreating tables table:', recreateError);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error handling table constraints:', error);
+    return false;
+  }
 };
