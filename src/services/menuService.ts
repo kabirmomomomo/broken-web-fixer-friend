@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from '@/components/ui/sonner';
 import { handleRelationDoesNotExistError } from '@/lib/setupDatabase';
+import { createClient } from '@supabase/supabase-js';
+import { optimizeImage } from '@/lib/imageOptimization';
 
 // Type definitions for UI
 export interface MenuItemUI {
@@ -59,6 +61,23 @@ export interface RestaurantUI {
   upi_id?: string;
 }
 
+// Add cache configuration
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const cache = new Map<string, { data: any; timestamp: number }>();
+
+// Add cache helper functions
+const getFromCache = (key: string) => {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data;
+  }
+  return null;
+};
+
+const setCache = (key: string, data: any) => {
+  cache.set(key, { data, timestamp: Date.now() });
+};
+
 export const generateStableRestaurantId = (userId: string | undefined) => {
   if (!userId) {
     return uuidv4();
@@ -69,13 +88,16 @@ export const generateStableRestaurantId = (userId: string | undefined) => {
 
 export const uploadItemImage = async (file: File, itemId: string): Promise<string | null> => {
   try {
-    const fileExt = file.name.split('.').pop();
+    // Optimize the image before uploading
+    const optimizedFile = await optimizeImage(file);
+    
+    const fileExt = optimizedFile.name.split('.').pop();
     const fileName = `${itemId}.${fileExt}`;
     const filePath = `${fileName}`;
     
     const { data, error } = await supabase.storage
       .from('menu-images')
-      .upload(filePath, file, {
+      .upload(filePath, optimizedFile, {
         cacheControl: '3600',
         upsert: true
       });
@@ -134,199 +156,153 @@ export const createRestaurant = async (name: string, description: string) => {
 };
 
 export const getRestaurantById = async (id: string): Promise<RestaurantUI | null> => {
-  try {
-    console.log('Fetching restaurant with ID:', id);
-    
-    const { data: restaurant, error: restaurantError } = await supabase
-      .from('restaurants')
+  const cacheKey = `restaurant_${id}`;
+  const cachedData = getFromCache(cacheKey);
+  
+  if (cachedData) {
+    return cachedData;
+  }
+
+  const { data: restaurant, error } = await supabase
+    .from('restaurants')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!restaurant) {
+    return null;
+  }
+
+  // Fetch categories with pagination
+  const { data: categories, error: categoriesError } = await supabase
+    .from('menu_categories')
+    .select('*')
+    .eq('restaurant_id', id)
+    .order('order', { ascending: true });
+
+  if (categoriesError) {
+    throw categoriesError;
+  }
+
+  const categoriesWithItems: MenuCategoryUI[] = [];
+
+  // Fetch items for each category with pagination
+  for (const category of categories || []) {
+    const { data: items, error: itemsError } = await supabase
+      .from('menu_items')
       .select('*')
-      .eq('id', id)
-      .single();
-
-    if (restaurantError) {
-      if (restaurantError.code === 'PGRST116') {
-        const success = await handleRelationDoesNotExistError(restaurantError);
-        if (!success) throw restaurantError;
-        
-        return getRestaurantById(id);
-      }
-      throw restaurantError;
-    }
-    
-    if (!restaurant) {
-      console.log('Restaurant not found in database:', id);
-      return null;
-    }
-
-    console.log('Restaurant data fetched:', restaurant);
-
-    const { data: categories, error: categoriesError } = await supabase
-      .from('menu_categories')
-      .select('*')
-      .eq('restaurant_id', id)
+      .eq('category_id', category.id)
       .order('order', { ascending: true });
 
-    if (categoriesError) {
-      if (categoriesError.code === 'PGRST116') {
-        const success = await handleRelationDoesNotExistError(categoriesError);
-        if (!success) throw categoriesError;
+    if (itemsError) {
+      if (itemsError.code === 'PGRST116') {
+        const success = await handleRelationDoesNotExistError(itemsError);
+        if (!success) throw itemsError;
         
-        console.log('Created categories table, but no categories found');
-        return {
-          id: restaurant.id,
-          name: restaurant.name,
-          description: restaurant.description,
-          categories: [],
-          image_url: restaurant.image_url,
-          google_review_link: restaurant.google_review_link,
-          location: restaurant.location,
-          phone: restaurant.phone,
-          wifi_password: restaurant.wifi_password,
-          opening_time: restaurant.opening_time,
-          closing_time: restaurant.closing_time
-        };
+        categoriesWithItems.push({
+          id: category.id,
+          name: category.name,
+          items: [],
+        });
+        continue;
       }
-      throw categoriesError;
+      throw itemsError;
     }
 
-    const categoriesWithItems: MenuCategoryUI[] = [];
+    const menuItems: MenuItemUI[] = [];
 
-    for (const category of categories || []) {
-      const { data: items, error: itemsError } = await supabase
-        .from('menu_items')
-        .select('*')
-        .eq('category_id', category.id)
-        .order('order', { ascending: true });
-
-      if (itemsError) {
-        if (itemsError.code === 'PGRST116') {
-          const success = await handleRelationDoesNotExistError(itemsError);
-          if (!success) throw itemsError;
-          
-          categoriesWithItems.push({
-            id: category.id,
-            name: category.name,
-            items: [],
-          });
-          continue;
-        }
-        throw itemsError;
-      }
-
-      const menuItems: MenuItemUI[] = [];
-
-      for (const item of items || []) {
-        const { data: variants, error: variantsError } = await supabase
+    // Fetch variants and addons in parallel for better performance
+    for (const item of items || []) {
+      const [variantsResult, addonMappingsResult] = await Promise.all([
+        supabase
           .from('menu_item_variants')
           .select('*')
           .eq('menu_item_id', item.id)
-          .order('order', { ascending: true });
-
-        if (variantsError && variantsError.code !== 'PGRST116') {
-          throw variantsError;
-        }
-
-        const { data: addonMappings, error: addonMappingsError } = await supabase
+          .order('order', { ascending: true }),
+        supabase
           .from('menu_item_addon_mapping')
           .select('addon_id')
-          .eq('menu_item_id', item.id);
+          .eq('menu_item_id', item.id)
+      ]);
 
-        if (addonMappingsError && addonMappingsError.code !== 'PGRST116') {
-          throw addonMappingsError;
-        }
-
-        const addons: MenuItemAddonUI[] = [];
-        
-        if (addonMappings && addonMappings.length > 0) {
-          const addonIds = addonMappings.map(mapping => mapping.addon_id);
-          
-          const { data: addonDetails, error: addonDetailsError } = await supabase
-            .from('menu_item_addons')
-            .select('*')
-            .in('id', addonIds);
-
-          if (addonDetailsError && addonDetailsError.code !== 'PGRST116') {
-            throw addonDetailsError;
-          }
-
-          if (addonDetails) {
-            for (const addon of addonDetails) {
-              const { data: options, error: optionsError } = await supabase
-                .from('menu_addon_options')
-                .select('*')
-                .eq('addon_id', addon.id)
-                .order('order', { ascending: true });
-
-              if (optionsError && optionsError.code !== 'PGRST116') {
-                throw optionsError;
-              }
-
-              addons.push({
-                id: addon.id,
-                title: addon.title,
-                type: (addon.type === 'Single choice' || addon.type === 'Multiple choice') 
-                  ? addon.type 
-                  : 'Single choice',
-                options: options ? options.map(option => ({
-                  id: option.id,
-                  name: option.name,
-                  price: option.price
-                })) : []
-              });
-            }
-          }
-        }
-
-        menuItems.push({
-          id: item.id,
-          name: item.name,
-          description: item.description || '',
-          price: item.price,
-          old_price: item.old_price || '',
-          weight: item.weight || '',
-          image_url: item.image_url || '',
-          is_visible: item.is_visible !== false,
-          is_available: item.is_available !== false,
-          variants: variants ? variants.map(v => ({
-            id: v.id,
-            name: v.name,
-            price: v.price
-          })) : [],
-          addons: addons
-        });
+      if (variantsResult.error && variantsResult.error.code !== 'PGRST116') {
+        throw variantsResult.error;
       }
 
-      categoriesWithItems.push({
-        id: category.id,
-        name: category.name,
-        items: menuItems,
+      if (addonMappingsResult.error && 'code' in addonMappingsResult.error && addonMappingsResult.error.code !== 'PGRST116') {
+        throw addonMappingsResult.error;
+      }
+
+      const addons: MenuItemAddonUI[] = [];
+      
+      // Fetch addon details in parallel
+      if (addonMappingsResult.data?.length) {
+        const addonDetails = await Promise.all(
+          addonMappingsResult.data.map(mapping =>
+            supabase
+              .from('menu_addons')
+              .select('*')
+              .eq('id', mapping.addon_id)
+              .single()
+          )
+        );
+
+        for (const { data: addon, error: addonError } of addonDetails) {
+          if (addonError) throw addonError;
+          if (addon) {
+            const { data: options, error: optionsError } = await supabase
+              .from('menu_addon_options')
+              .select('*')
+              .eq('addon_id', addon.id)
+              .order('order', { ascending: true });
+
+            if (optionsError) throw optionsError;
+
+            addons.push({
+              id: addon.id,
+              title: addon.title,
+              type: addon.type,
+              options: options || [],
+            });
+          }
+        }
+      }
+
+      menuItems.push({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        old_price: item.old_price,
+        weight: item.weight,
+        image_url: item.image_url,
+        is_visible: item.is_visible,
+        is_available: item.is_available,
+        variants: variantsResult.data || [],
+        addons,
       });
     }
 
-    return {
-      id: restaurant.id,
-      name: restaurant.name,
-      description: restaurant.description || '',
-      categories: categoriesWithItems,
-      image_url: restaurant.image_url,
-      google_review_link: restaurant.google_review_link,
-      location: restaurant.location,
-      phone: restaurant.phone,
-      wifi_password: restaurant.wifi_password,
-      opening_time: restaurant.opening_time,
-      closing_time: restaurant.closing_time
-    };
-  } catch (error) {
-    console.error('Error getting restaurant:', error);
-    const setupSucceeded = await handleRelationDoesNotExistError(error);
-    
-    if (setupSucceeded) {
-      console.log('Database tables created, retrying fetch...');
-      return getRestaurantById(id);
-    }
-    
-    throw error;
+    categoriesWithItems.push({
+      id: category.id,
+      name: category.name,
+      items: menuItems,
+    });
   }
+
+  const result = {
+    ...restaurant,
+    categories: categoriesWithItems,
+  };
+
+  // Cache the result
+  setCache(cacheKey, result);
+
+  return result;
 };
 
 export const getUserRestaurant = async (): Promise<RestaurantUI | null> => {
@@ -380,6 +356,9 @@ export const getUserRestaurants = async () => {
 };
 
 export const saveRestaurantMenu = async (restaurant: RestaurantUI) => {
+  // Invalidate cache
+  cache.delete(`restaurant_${restaurant.id}`);
+
   const { id, name, description, categories, image_url, google_review_link, location, phone, wifi_password, opening_time, closing_time, payment_qr_code, upi_id } = restaurant;
   
   try {
