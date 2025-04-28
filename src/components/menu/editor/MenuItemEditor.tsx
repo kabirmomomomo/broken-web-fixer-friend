@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -81,6 +81,27 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
   const [selectedTab, setSelectedTab] = useState("details");
   const [imagePreview, setImagePreview] = useState<string | null>(activeItem.image_url || null);
 
+  // Add refs for input fields
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
+  const priceInputRef = useRef<HTMLInputElement>(null);
+  const variantNameInputRef = useRef<HTMLInputElement>(null);
+  const variantPriceInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-select input fields when component mounts or when new item is added
+  useEffect(() => {
+    if (nameInputRef.current) {
+      nameInputRef.current.select();
+    }
+  }, [activeItem.id]);
+
+  // Auto-select variant input fields when new variant is added
+  useEffect(() => {
+    if (selectedTab === "variants" && variantNameInputRef.current) {
+      variantNameInputRef.current.select();
+    }
+  }, [selectedTab, activeItem.variants?.length]);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -143,6 +164,7 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                   <Label htmlFor="item-name">Item Name</Label>
                   <Input
                     id="item-name"
+                    ref={nameInputRef}
                     value={activeItem.name}
                     onChange={(e) =>
                       updateMenuItem(
@@ -158,6 +180,7 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                   <Label htmlFor="item-description">Description</Label>
                   <Textarea
                     id="item-description"
+                    ref={descriptionInputRef}
                     value={activeItem.description}
                     onChange={(e) =>
                       updateMenuItem(
@@ -176,6 +199,7 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                     <Label htmlFor="item-price">Price</Label>
                     <Input
                       id="item-price"
+                      ref={priceInputRef}
                       value={activeItem.price}
                       onChange={(e) =>
                         updateMenuItem(
@@ -262,6 +286,7 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                           </Label>
                           <Input
                             id={`variant-name-${variant.id}`}
+                            ref={variantNameInputRef}
                             value={variant.name}
                             onChange={(e) =>
                               updateVariant(
@@ -280,6 +305,7 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                           </Label>
                           <Input
                             id={`variant-price-${variant.id}`}
+                            ref={variantPriceInputRef}
                             value={variant.price}
                             onChange={(e) =>
                               updateVariant(
