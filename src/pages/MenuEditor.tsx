@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { Separator } from "@/components/ui/separator";
@@ -18,12 +18,8 @@ import {
   MenuAddonOptionUI
 } from "@/services/menuService";
 import { useIsMobile } from "@/hooks/use-mobile";
-import RestaurantForm from "@/components/menu/editor/RestaurantForm";
-import CategoriesList from "@/components/menu/editor/CategoriesList";
-import MenuItemEditor from "@/components/menu/editor/MenuItemEditor";
-import EmptyItemEditor from "@/components/menu/editor/EmptyItemEditor";
-import EditorHeader from "@/components/menu/editor/EditorHeader";
-import LoadingAnimation from "@/components/LoadingAnimation";
+import { lazy, Suspense } from 'react';
+import LoadingAnimation from '@/components/LoadingAnimation';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +29,15 @@ import {
   Sheet,
   SheetContent,
 } from "@/components/ui/sheet";
+import debounce from "lodash/debounce";
+import { saveState, loadState, hasUnsavedChanges, markChangesAsSaved } from '@/lib/statePersistence';
+
+// Lazy load components
+const RestaurantForm = lazy(() => import('@/components/menu/editor/RestaurantForm'));
+const CategoriesList = lazy(() => import('@/components/menu/editor/CategoriesList'));
+const MenuItemEditor = lazy(() => import('@/components/menu/editor/MenuItemEditor'));
+const EmptyItemEditor = lazy(() => import('@/components/menu/editor/EmptyItemEditor'));
+const EditorHeader = lazy(() => import('@/components/menu/editor/EditorHeader'));
 
 const MenuEditor = () => {
   const navigate = useNavigate();
@@ -62,26 +67,47 @@ const MenuEditor = () => {
   const saveMenuMutation = useMutation({
     mutationFn: saveRestaurantMenu,
     onSuccess: () => {
-      toast.success("Menu saved successfully!");
+      toast.success("Changes saved successfully");
     },
     onError: (error) => {
-      console.error("Error saving menu:", error);
-      toast.error("Failed to save menu. Please try again.");
+      toast.error("Failed to save changes. Please try again.");
+      console.error("Save error:", error);
     },
   });
 
   const isMobile = useIsMobile();
 
+  // Add debounced save function
+  const debouncedSave = useCallback(
+    debounce((data: typeof restaurant) => {
+      saveMenuMutation.mutate(data);
+    }, 1000),
+    []
+  );
+
+  // Add state recovery
   useEffect(() => {
     if (!isLoadingRestaurant) {
       if (restaurantData) {
-        setRestaurant(restaurantData);
-        
-        const expanded: Record<string, boolean> = {};
-        restaurantData.categories.forEach(category => {
-          expanded[category.id] = false;
-        });
-        setExpandedCategories(expanded);
+        // Check for saved state
+        const savedState = loadState();
+        if (savedState && savedState.id === restaurantData.id) {
+          setRestaurant(savedState);
+          
+          const expanded: Record<string, boolean> = {};
+          savedState.categories.forEach(category => {
+            expanded[category.id] = false;
+          });
+          setExpandedCategories(expanded);
+        } else {
+          setRestaurant(restaurantData);
+          
+          const expanded: Record<string, boolean> = {};
+          restaurantData.categories.forEach(category => {
+            expanded[category.id] = false;
+          });
+          setExpandedCategories(expanded);
+        }
       } else if (user?.id) {
         const stableId = generateStableRestaurantId(user.id);
         const newRestaurant: RestaurantUI = {
@@ -95,6 +121,18 @@ const MenuEditor = () => {
       setIsLoading(false);
     }
   }, [restaurantData, isLoadingRestaurant, user]);
+
+  // Save state to localStorage when changes occur
+  useEffect(() => {
+    saveState(restaurant);
+  }, [restaurant]);
+
+  // Add cleanup for debounced function
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave]);
 
   const toggleCategoryExpand = (categoryId: string) => {
     setExpandedCategories(prev => ({
@@ -124,11 +162,14 @@ const MenuEditor = () => {
   };
 
   const updateCategory = (id: string, name: string) => {
-    setRestaurant({
-      ...restaurant,
-      categories: restaurant.categories.map((category) =>
-        category.id === id ? { ...category, name } : category
-      ),
+    setRestaurant(prev => {
+      const newState = {
+        ...prev,
+        categories: prev.categories.map((category) =>
+          category.id === id ? { ...category, name } : category
+        ),
+      };
+      return newState;
     });
   };
 
@@ -178,18 +219,21 @@ const MenuEditor = () => {
     field: keyof MenuItemUI,
     value: string | boolean
   ) => {
-    setRestaurant({
-      ...restaurant,
-      categories: restaurant.categories.map((category) =>
-        category.id === categoryId
-          ? {
-              ...category,
-              items: category.items.map((item) =>
-                item.id === itemId ? { ...item, [field]: value } : item
-              ),
-            }
-          : category
-      ),
+    setRestaurant(prev => {
+      const newState = {
+        ...prev,
+        categories: prev.categories.map((category) =>
+          category.id === categoryId
+            ? {
+                ...category,
+                items: category.items.map((item) =>
+                  item.id === itemId ? { ...item, [field]: value } : item
+                ),
+              }
+            : category
+        ),
+      };
+      return newState;
     });
   };
 
@@ -299,7 +343,32 @@ const MenuEditor = () => {
     field: keyof MenuItemVariantUI,
     value: string
   ) => {
-    setRestaurant({
+    // Optimistically update the UI
+    setRestaurant(prev => ({
+      ...prev,
+      categories: prev.categories.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              items: category.items.map((item) =>
+                item.id === itemId
+                  ? {
+                      ...item,
+                      variants: (item.variants || []).map((variant) =>
+                        variant.id === variantId
+                          ? { ...variant, [field]: value }
+                          : variant
+                      ),
+                    }
+                  : item
+              ),
+            }
+          : category
+      ),
+    }));
+
+    // Debounce the save operation
+    debouncedSave({
       ...restaurant,
       categories: restaurant.categories.map((category) =>
         category.id === categoryId
@@ -564,7 +633,16 @@ const MenuEditor = () => {
   };
 
   const handleSaveMenu = () => {
-    saveMenuMutation.mutate(restaurant);
+    saveMenuMutation.mutate(restaurant, {
+      onSuccess: () => {
+        markChangesAsSaved();
+        toast.success("Changes saved successfully");
+      },
+      onError: (error) => {
+        toast.error("Failed to save changes. Please try again.");
+        console.error("Save error:", error);
+      }
+    });
   };
 
   const handleSaveRestaurantDetails = async (details: Partial<typeof restaurant>) => {
@@ -579,6 +657,21 @@ const MenuEditor = () => {
       ...details
     });
   };
+
+  // Add warning when leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
 
   if (isLoading) {
     return <LoadingAnimation />;
@@ -625,59 +718,71 @@ const MenuEditor = () => {
 
   return (
     <div className="container mx-auto py-4 md:py-8 px-3 md:px-4 max-w-7xl">
-      <EditorHeader 
-        restaurant={restaurant}
-        handleSaveMenu={handleSaveMenu}
-        handleSaveRestaurantDetails={handleSaveRestaurantDetails}
-        signOut={signOut}
-        isSaving={saveMenuMutation.isPending}
-      />
+      <Suspense fallback={<LoadingAnimation />}>
+        <EditorHeader 
+          restaurant={restaurant}
+          handleSaveMenu={handleSaveMenu}
+          handleSaveRestaurantDetails={handleSaveRestaurantDetails}
+          signOut={signOut}
+          isSaving={saveMenuMutation.isPending}
+        />
+      </Suspense>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
         <div className="space-y-4">
-          <RestaurantForm restaurant={restaurant} setRestaurant={setRestaurant} />
+          <Suspense fallback={<LoadingAnimation />}>
+            <RestaurantForm restaurant={restaurant} setRestaurant={setRestaurant} />
+          </Suspense>
 
           <Separator className="my-4" />
 
-          <CategoriesList
-            categories={restaurant.categories}
-            expandedCategories={expandedCategories}
-            toggleCategoryExpand={toggleCategoryExpand}
-            updateCategory={updateCategory}
-            deleteCategory={deleteCategory}
-            moveCategory={moveCategory}
-            addMenuItem={addMenuItem}
-            moveMenuItem={moveMenuItem}
-            deleteMenuItem={deleteMenuItem}
-            setActiveItemId={setActiveItemId}
-            addCategory={addCategory}
-          />
+          <Suspense fallback={<LoadingAnimation />}>
+            <CategoriesList
+              categories={restaurant.categories}
+              expandedCategories={expandedCategories}
+              toggleCategoryExpand={toggleCategoryExpand}
+              updateCategory={updateCategory}
+              deleteCategory={deleteCategory}
+              moveCategory={moveCategory}
+              addMenuItem={addMenuItem}
+              moveMenuItem={moveMenuItem}
+              deleteMenuItem={deleteMenuItem}
+              setActiveItemId={setActiveItemId}
+              addCategory={addCategory}
+            />
+          </Suspense>
         </div>
 
         <div>
           {isMobile ? (
             <Sheet open={!!activeItemId} onOpenChange={(open) => !open && setActiveItemId(null)}>
               <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
-                {renderItemEditor()}
+                <Suspense fallback={<LoadingAnimation />}>
+                  {renderItemEditor()}
+                </Suspense>
               </SheetContent>
             </Sheet>
           ) : (
             <Dialog open={!!activeItemId} onOpenChange={(open) => !open && setActiveItemId(null)}>
               <DialogPortal>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                  {renderItemEditor()}
+                  <Suspense fallback={<LoadingAnimation />}>
+                    {renderItemEditor()}
+                  </Suspense>
                 </DialogContent>
               </DialogPortal>
             </Dialog>
           )}
 
           {!activeItemId && (
-            <EmptyItemEditor 
-              hasCategories={restaurant.categories.length > 0}
-              addCategory={addCategory}
-              addMenuItem={addMenuItem}
-              firstCategoryId={restaurant.categories.length > 0 ? restaurant.categories[0].id : undefined}
-            />
+            <Suspense fallback={<LoadingAnimation />}>
+              <EmptyItemEditor 
+                hasCategories={restaurant.categories.length > 0}
+                addCategory={addCategory}
+                addMenuItem={addMenuItem}
+                firstCategoryId={restaurant.categories.length > 0 ? restaurant.categories[0].id : undefined}
+              />
+            </Suspense>
           )}
         </div>
       </div>
