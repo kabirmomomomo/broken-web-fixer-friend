@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +35,15 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   setActiveItemId,
   categoriesLength,
 }) => {
+  const categoryInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-select category name input when component mounts
+  useEffect(() => {
+    if (categoryInputRef.current) {
+      categoryInputRef.current.select();
+    }
+  }, [category.id]);
+
   return (
     <div className="border rounded-lg p-4 space-y-3">
       <div className="flex justify-between items-start">
@@ -57,6 +65,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
           </div>
           <Input
             id={`category-${category.id}`}
+            ref={categoryInputRef}
             value={category.name}
             onChange={(e) =>
               updateCategory(category.id, e.target.value)
