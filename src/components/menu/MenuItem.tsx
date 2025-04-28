@@ -116,12 +116,14 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                   ${parseFloat(item.old_price).toFixed(2)}
                 </span>
               )}
-              <span className={cn(
-                "font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-2 py-0.5 rounded-full shadow-sm tabular-nums",
-                isMobile ? "text-xs min-w-[48px] text-center px-2" : "text-base px-2"
-              )}>
-                ${parseFloat(effectivePrice).toFixed(2)}
-              </span>
+              {(!item.variants || item.variants.length === 0) && (
+                <span className={cn(
+                  "font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-2 py-0.5 rounded-full shadow-sm tabular-nums",
+                  isMobile ? "text-xs min-w-[48px] text-center px-2" : "text-base px-2"
+                )}>
+                  ${parseFloat(effectivePrice).toFixed(2)}
+                </span>
+              )}
             </div>
           </div>
 
@@ -163,9 +165,10 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                   >
                     {item.variants.map(variant => (
                       <div key={variant.id} className={cn(
-                        "flex items-center justify-between hover:bg-purple-100/60 rounded-md transition-colors",
+                        "flex items-center justify-between hover:bg-purple-100/60 rounded-md transition-colors cursor-pointer",
                         isMobile ? "px-1 py-0.5" : "px-1 py-0.5"
-                      )}>
+                      )}
+                      onClick={() => handleVariantChange(variant.id)}>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem
                             value={variant.id}
