@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -24,6 +23,7 @@ import { Toaster } from "@/components/ui/toaster";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import { OrderProvider } from '@/contexts/OrderContext';
 import OrderHistory from '@/components/menu/OrderHistory';
+import WaiterCallButton from '@/components/menu/WaiterCallButton';
 
 // Sample data as fallback when API call fails or is loading
 const sampleData: Restaurant = {
@@ -248,6 +248,12 @@ const MenuPreview = () => {
           </div>
           
           <MenuFooter />
+          {tableId && (
+            <WaiterCallButton 
+              tableId={tableId} 
+              restaurantId={restaurantToDisplay.id} 
+            />
+          )}
         </div>
         <Cart tableId={tableId || undefined} />
         <OrderHistory tableId={tableId || undefined} />
