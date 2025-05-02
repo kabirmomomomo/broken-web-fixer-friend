@@ -318,6 +318,7 @@ export type Database = {
           order_id: string
           price: number
           quantity: number
+          restaurant_id: string | null
           variant_id: string | null
           variant_name: string | null
         }
@@ -329,6 +330,7 @@ export type Database = {
           order_id: string
           price: number
           quantity: number
+          restaurant_id?: string | null
           variant_id?: string | null
           variant_name?: string | null
         }
@@ -340,6 +342,7 @@ export type Database = {
           order_id?: string
           price?: number
           quantity?: number
+          restaurant_id?: string | null
           variant_id?: string | null
           variant_name?: string | null
         }
@@ -360,6 +363,7 @@ export type Database = {
           id: string
           restaurant_id: string
           status: string
+          table_id: string | null
           total_amount: number
           updated_at: string | null
           user_id: string | null
@@ -370,6 +374,7 @@ export type Database = {
           id?: string
           restaurant_id: string
           status?: string
+          table_id?: string | null
           total_amount: number
           updated_at?: string | null
           user_id?: string | null
@@ -380,6 +385,7 @@ export type Database = {
           id?: string
           restaurant_id?: string
           status?: string
+          table_id?: string | null
           total_amount?: number
           updated_at?: string | null
           user_id?: string | null
@@ -399,6 +405,7 @@ export type Database = {
           opening_time: string | null
           payment_qr_code: string | null
           phone: string | null
+          table_count: number | null
           updated_at: string | null
           upi_id: string | null
           user_id: string
@@ -416,6 +423,7 @@ export type Database = {
           opening_time?: string | null
           payment_qr_code?: string | null
           phone?: string | null
+          table_count?: number | null
           updated_at?: string | null
           upi_id?: string | null
           user_id: string
@@ -433,12 +441,75 @@ export type Database = {
           opening_time?: string | null
           payment_qr_code?: string | null
           phone?: string | null
+          table_count?: number | null
           updated_at?: string | null
           upi_id?: string | null
           user_id?: string
           wifi_password?: string | null
         }
         Relationships: []
+      }
+      tables: {
+        Row: {
+          created_at: string | null
+          id: string
+          restaurant_id: string
+          table_number: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          restaurant_id: string
+          table_number: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          restaurant_id?: string
+          table_number?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      waiter_calls: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string
+          restaurant_id: string
+          status: string
+          table_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason: string
+          restaurant_id: string
+          status?: string
+          table_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string
+          restaurant_id?: string
+          status?: string
+          table_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waiter_calls_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
