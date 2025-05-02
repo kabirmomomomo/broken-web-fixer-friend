@@ -1,3 +1,4 @@
+
   export interface MenuItem {
     id: string;
     name: string;
@@ -31,11 +32,14 @@
     price: string;
   }
 
+  export type CategoryType = "food" | "liquor" | "beverages" | "revive" | "all";
+
   export interface MenuCategory {
     id: string;
     name: string;
     items: MenuItem[];
     icon?: string;
+    type?: CategoryType;
   }
 
   export interface Restaurant {
