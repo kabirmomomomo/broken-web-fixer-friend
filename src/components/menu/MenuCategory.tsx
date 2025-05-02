@@ -1,4 +1,3 @@
-
 import React from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -29,6 +28,7 @@ const MenuCategory: React.FC<MenuCategoryProps> = ({
   return (
     <Collapsible
       key={category.id}
+      id={`category-${category.id}`}
       open={isOpen}
       onOpenChange={() => toggleCategory(category.id)}
       className={cn(
