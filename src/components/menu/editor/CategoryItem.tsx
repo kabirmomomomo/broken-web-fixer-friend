@@ -1,10 +1,11 @@
-import React, { useRef, useEffect } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { MenuCategoryUI, MenuItemUI } from "@/services/menuService";
-import { ChevronUp, ChevronDown, MoveUp, MoveDown, Trash2, PlusCircle } from "lucide-react";
+import { ChevronUp, ChevronDown, MoveUp, MoveDown, Trash2, PlusCircle, Pencil } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface CategoryItemProps {
   category: MenuCategoryUI;
@@ -35,91 +36,80 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   setActiveItemId,
   categoriesLength,
 }) => {
-  const categoryInputRef = useRef<HTMLInputElement>(null);
-
-  // Auto-select category name input when component mounts
-  useEffect(() => {
-    if (categoryInputRef.current) {
-      categoryInputRef.current.select();
-    }
-  }, [category.id]);
-
   return (
-    <div className="border rounded-lg p-4 space-y-3">
-      <div className="flex justify-between items-start">
-        <div className="space-y-2 flex-1">
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => toggleExpand(category.id)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              {isExpanded ? (
-                <ChevronUp className="h-5 w-5" />
-              ) : (
-                <ChevronDown className="h-5 w-5" />
-              )}
-            </button>
-            <Label htmlFor={`category-${category.id}`}>
-              Category Name
-            </Label>
-          </div>
+    <div className="border rounded-lg p-2 md:p-3 space-y-2 transition-all duration-200 hover:shadow-sm">
+      <div className="flex justify-between items-center gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <button 
+            onClick={() => toggleExpand(category.id)}
+            className="text-gray-500 hover:text-gray-700 transition-colors duration-200 p-1"
+          >
+            {isExpanded ? (
+              <ChevronUp className="h-4 w-4 md:h-5 md:w-5" />
+            ) : (
+              <ChevronDown className="h-4 w-4 md:h-5 md:w-5" />
+            )}
+          </button>
           <Input
             id={`category-${category.id}`}
-            ref={categoryInputRef}
             value={category.name}
-            onChange={(e) =>
-              updateCategory(category.id, e.target.value)
-            }
+            onChange={(e) => updateCategory(category.id, e.target.value)}
+            className="h-8 text-sm md:text-base"
+            placeholder="Category Name"
           />
         </div>
-        <div className="flex gap-2 ml-4">
+        
+        <div className="flex items-center gap-1">
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={() => moveCategory(categoryIndex, "up")}
             disabled={categoryIndex === 0}
+            className="h-7 w-7"
           >
-            <MoveUp className="h-4 w-4" />
+            <MoveUp className="h-3 w-3 md:h-4 md:w-4" />
           </Button>
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={() => moveCategory(categoryIndex, "down")}
             disabled={categoryIndex === categoriesLength - 1}
+            className="h-7 w-7"
           >
-            <MoveDown className="h-4 w-4" />
+            <MoveDown className="h-3 w-3 md:h-4 md:w-4" />
           </Button>
           <Button
-            variant="destructive"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={() => deleteCategory(category.id)}
+            className="h-7 w-7 text-destructive hover:text-destructive"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
           </Button>
         </div>
       </div>
 
       {isExpanded && (
         <>
-          <Separator />
-
-          <div className="space-y-4">
+          <Separator className="my-2" />
+          <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">Menu Items</h3>
+              <h3 className="text-sm md:text-base font-medium">Menu Items</h3>
               <Button
                 onClick={() => addMenuItem(category.id)}
                 size="sm"
                 variant="outline"
-                className="gap-2"
+                className="h-7 gap-1 text-xs md:text-sm"
               >
-                <PlusCircle className="h-4 w-4" />
-                Add Item
+                <PlusCircle className="h-3 w-3 md:h-4 md:w-4" />
+                <span className="hidden md:inline">Add Item</span>
+                <span className="md:hidden">Add</span>
               </Button>
             </div>
 
             {category.items.length === 0 ? (
-              <div className="text-center py-6 border rounded-lg border-dashed">
-                <p className="text-muted-foreground">
+              <div className="text-center py-4 border rounded-lg border-dashed">
+                <p className="text-xs md:text-sm text-muted-foreground">
                   No items in this category yet.
                 </p>
               </div>
@@ -158,46 +148,55 @@ const CategoryItemsList: React.FC<CategoryItemsListProps> = ({
   setActiveItemId,
 }) => {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {items.map((item, itemIndex) => (
         <div
           key={item.id}
-          className="border rounded-md p-3"
+          className="border rounded-md p-2 transition-all duration-200 hover:shadow-sm"
         >
-          <div className="flex justify-between items-center">
-            <div className="flex-1 font-medium truncate">
-              {item.name} - ${parseFloat(item.price).toFixed(2)}
+          <div className="flex justify-between items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm md:text-base font-medium truncate">
+                {item.name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                ${parseFloat(item.price).toFixed(2)}
+              </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-1">
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() => setActiveItemId(item.id)}
+                className="h-7 w-7"
               >
-                Edit
+                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
               </Button>
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() => moveMenuItem(categoryIndex, itemIndex, "up")}
                 disabled={itemIndex === 0}
+                className="h-7 w-7"
               >
-                <MoveUp className="h-4 w-4" />
+                <MoveUp className="h-3 w-3 md:h-4 md:w-4" />
               </Button>
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() => moveMenuItem(categoryIndex, itemIndex, "down")}
                 disabled={itemIndex === items.length - 1}
+                className="h-7 w-7"
               >
-                <MoveDown className="h-4 w-4" />
+                <MoveDown className="h-3 w-3 md:h-4 md:w-4" />
               </Button>
               <Button
-                variant="destructive"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() => deleteMenuItem(categoryId, item.id)}
+                className="h-7 w-7 text-destructive hover:text-destructive"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
               </Button>
             </div>
           </div>
