@@ -4,8 +4,8 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getRestaurantById } from "@/services/menuService";
 import { setupDatabase, handleRelationDoesNotExistError } from "@/lib/setupDatabase";
-import { supabase } from "@/lib/supabase";
-import { Restaurant } from "@/types/menu";
+import { supabase } from "@/integrations/supabase/client";
+import { CategoryType, Restaurant } from "@/types/menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 // Component imports
@@ -18,6 +18,7 @@ import MenuList from "@/components/menu/MenuList";
 import MenuFooter from "@/components/menu/MenuFooter";
 import Cart from "@/components/menu/Cart";
 import SearchBar from "@/components/menu/SearchBar";
+import CategoryTabs from "@/components/menu/CategoryTabs";
 import { CartProvider } from "@/contexts/CartContext";
 import { Toaster } from "@/components/ui/toaster";
 import LoadingAnimation from "@/components/LoadingAnimation";
@@ -61,6 +62,7 @@ const MenuPreview = () => {
   const [isDbError, setIsDbError] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<CategoryType>("food");
   const isMobile = useIsMobile();
 
   // Optimize query with better caching and error handling
@@ -159,6 +161,12 @@ const MenuPreview = () => {
     }
   }, [restaurantToDisplay]);
 
+  // Handle tab changes
+  const handleTabChange = useCallback((tab: CategoryType) => {
+    setActiveTab(tab);
+    setSearchQuery("");
+  }, []);
+
   // Retry setup if there's an error
   useEffect(() => {
     let mounted = true;
@@ -237,6 +245,10 @@ const MenuPreview = () => {
             closing_time={restaurantToDisplay.closing_time}
           />
           
+          <div className="mb-4">
+            <CategoryTabs activeTab={activeTab} onTabChange={handleTabChange} />
+          </div>
+
           <div className={isMobile ? "px-2" : "px-6"}>
             <SearchBar onSearch={handleSearch} />
             
@@ -245,6 +257,7 @@ const MenuPreview = () => {
               openCategories={openCategories} 
               toggleCategory={toggleCategory}
               searchQuery={searchQuery}
+              activeTab={activeTab}
             />
           </div>
           
