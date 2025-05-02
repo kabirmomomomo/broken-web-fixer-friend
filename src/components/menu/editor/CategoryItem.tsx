@@ -39,7 +39,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   categoriesLength,
 }) => {
   const handleCategoryTypeChange = (value: string) => {
-    console.log(`Changing category type to: ₹{value}`);
+    console.log(`Changing category type to: ${value}`);
     updateCategory(category.id, category.name, value as CategoryType);
   };
 
@@ -58,7 +58,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
             )}
           </button>
           <Input
-            id={`category-₹{category.id}`}
+            id={`category-${category.id}`}
             value={category.name}
             onChange={(e) => updateCategory(category.id, e.target.value, category.type)}
             className="h-8 text-sm md:text-base"
@@ -183,7 +183,7 @@ const CategoryItemsList: React.FC<CategoryItemsListProps> = ({
                 {item.name}
               </p>
               <p className="text-xs text-muted-foreground">
-                ₹{parseFloat(item.price).toFixed(2)}
+                ${parseFloat(item.price).toFixed(2)}
               </p>
             </div>
             <div className="flex items-center gap-1">

@@ -83,14 +83,14 @@
       if (!restaurantId) return;
       
       const channel = supabase
-        .channel(`restaurant-orders-₹{restaurantId}`)
+        .channel(`restaurant-orders-${restaurantId}`)
         .on(
           'postgres_changes',
           {
             event: '*', 
             schema: 'public',
             table: 'orders',
-            filter: `restaurant_id=eq.₹{restaurantId}`
+            filter: `restaurant_id=eq.${restaurantId}`
           },
           (payload) => {
             console.log('Order change received:', payload);
@@ -119,7 +119,7 @@
           )
         );
         
-        toast.success(`Order status updated to ₹{newStatus}`);
+        toast.success(`Order status updated to ${newStatus}`);
       } catch (err: any) {
         console.error('Error updating order status:', err);
         toast.error('Failed to update order status');
@@ -133,7 +133,7 @@
       }
       
       try {
-        console.log(`Deleting orders for restaurant ₹{restaurantId}, table ₹{tableId}`);
+        console.log(`Deleting orders for restaurant ${restaurantId}, table ${tableId}`);
         
         const { data: ordersToDelete, error: fetchError } = await supabase
           .from('orders')
@@ -147,11 +147,11 @@
         }
         
         if (!ordersToDelete || ordersToDelete.length === 0) {
-          toast.info(`No orders found for table ₹{tableId}`);
+          toast.info(`No orders found for table ${tableId}`);
           return;
         }
         
-        console.log(`Found ₹{ordersToDelete.length} orders to delete`);
+        console.log(`Found ${ordersToDelete.length} orders to delete`);
         
         const { error: deleteError } = await supabase
           .from('orders')
@@ -164,11 +164,11 @@
           throw deleteError;
         }
         
-        toast.success(`All orders from Table ₹{tableId} have been deleted`);
+        toast.success(`All orders from Table ${tableId} have been deleted`);
         fetchOrders();
       } catch (err: any) {
         console.error('Error in deleteTableOrders:', err);
-        toast.error(`Failed to delete orders: ₹{err.message || 'Unknown error'}`);
+        toast.error(`Failed to delete orders: ${err.message || 'Unknown error'}`);
       }
     };
     
@@ -272,7 +272,7 @@
               size="icon"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className={`h-8 w-8 bg-purple-50 hover:bg-purple-100 ₹{isRefreshing ? 'animate-spin' : ''}`}
+              className={`h-8 w-8 bg-purple-50 hover:bg-purple-100 ${isRefreshing ? 'animate-spin' : ''}`}
             >
               <RefreshCcw className="h-4 w-4 text-purple-600" />
             </Button>
@@ -280,7 +280,7 @@
               {orders.length} Orders
             </Badge>
             <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-green-200 text-xs">
-              ₹{orders.reduce((sum, order) => sum + Number(order.total_amount), 0).toFixed(2)} Total
+              ${orders.reduce((sum, order) => sum + Number(order.total_amount), 0).toFixed(2)} Total
             </Badge>
           </div>
         </div>
@@ -359,10 +359,10 @@
                                   )}
                                 </TableCell>
                                 <TableCell className="text-xs">{order.items.reduce((sum, item) => sum + item.quantity, 0)}</TableCell>
-                                <TableCell className="text-xs">₹{Number(order.total_amount).toFixed(2)}</TableCell>
+                                <TableCell className="text-xs">${Number(order.total_amount).toFixed(2)}</TableCell>
                                 <TableCell>
                                   <Badge 
-                                    className={`text-xs ₹{
+                                    className={`text-xs ${
                                       order.status === 'placed' ? 'bg-blue-100 text-blue-800 border-blue-200' :
                                       order.status === 'preparing' ? 'bg-amber-100 text-amber-800 border-amber-200' :
                                       order.status === 'ready' ? 'bg-green-100 text-green-800 border-green-200' :
@@ -444,7 +444,7 @@
                                 size="sm"
                                 className="h-7 px-2 text-destructive hover:text-destructive"
                                 onClick={() => {
-                                  if (window.confirm(`Are you sure you want to delete all orders from Table ₹{tableId}?`)) {
+                                  if (window.confirm(`Are you sure you want to delete all orders from Table ${tableId}?`)) {
                                     deleteTableOrders(tableId);
                                   }
                                 }}
@@ -454,7 +454,7 @@
                             </div>
                           </div>
                           <CardDescription>
-                            {totalItems} items · ₹{tableTotal.toFixed(2)} total
+                            {totalItems} items · ${tableTotal.toFixed(2)} total
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="pt-4">
@@ -485,12 +485,12 @@
                                         <span className="text-gray-500 text-xs"> ({item.variant_name})</span>
                                       )}
                                     </span>
-                                    <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                                    <span>${(item.price * item.quantity).toFixed(2)}</span>
                                   </div>
                                 ))}
                                 <Separator className="my-2" />
                                 <div className="flex justify-between items-center mt-1">
-                                  <span className="text-sm">₹{Number(order.total_amount).toFixed(2)}</span>
+                                  <span className="text-sm">${Number(order.total_amount).toFixed(2)}</span>
                                   <div className="flex space-x-1">
                                     {order.status === 'placed' && (
                                       <Button 
@@ -582,7 +582,7 @@
                                     </div>
                                   </div>
                                   <Badge 
-                                    className={`text-xs ₹{
+                                    className={`text-xs ${
                                       order.status === 'placed' ? 'bg-blue-100 text-blue-800 border-blue-200' :
                                       order.status === 'preparing' ? 'bg-amber-100 text-amber-800 border-amber-200' :
                                       order.status === 'ready' ? 'bg-green-100 text-green-800 border-green-200' :
@@ -603,14 +603,14 @@
                                           <span className="text-gray-500"> ({item.variant_name})</span>
                                         )}
                                       </span>
-                                      <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                                      <span>${(item.price * item.quantity).toFixed(2)}</span>
                                     </div>
                                   ))}
                                 </div>
                                 <Separator className="my-2" />
                                 <div className="flex justify-between items-center">
                                   <span className="font-medium text-xs">
-                                    ₹{Number(order.total_amount).toFixed(2)}
+                                    ${Number(order.total_amount).toFixed(2)}
                                   </span>
                                   <div className="flex gap-1">
                                     {order.status === 'placed' && (

@@ -30,7 +30,7 @@ interface RestaurantDetailsDialogProps {
 }
 
 const getDraftKey = (restaurant: RestaurantUI) => 
-  `restaurant_details_draft_₹{restaurant.id ?? restaurant.name}`;
+  `restaurant_details_draft_${restaurant.id ?? restaurant.name}`;
 
 const FormContent: React.FC<{
   formData: RestaurantUI;

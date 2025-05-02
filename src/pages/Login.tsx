@@ -82,7 +82,7 @@ const Login = () => {
     setResetLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `₹{window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) throw error;
@@ -177,7 +177,7 @@ const Login = () => {
 
                 <Button
                   type="submit"
-                  className={`w-full gap-2 transition-all duration-300 ₹{isHoveringButton ? 'scale-[1.02] shadow-md' : ''}`}
+                  className={`w-full gap-2 transition-all duration-300 ${isHoveringButton ? 'scale-[1.02] shadow-md' : ''}`}
                   disabled={loading}
                   onMouseEnter={() => setIsHoveringButton(true)}
                   onMouseLeave={() => setIsHoveringButton(false)}

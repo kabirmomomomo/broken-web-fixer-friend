@@ -67,7 +67,7 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
           variant="outline"
           size="sm"
           className="h-8 px-2 md:px-3"
-          onClick={() => navigate(`/menu-preview/₹{restaurant.id}`, { state: { from: 'menu-editor' } })}
+          onClick={() => navigate(`/menu-preview/${restaurant.id}`, { state: { from: 'menu-editor' } })}
         >
           <Eye className="h-4 w-4" />
           <span className="hidden md:inline ml-2">Preview</span>
@@ -87,7 +87,7 @@ const EditorHeader: React.FC<EditorHeaderProps> = ({
           variant="outline" 
           size="sm"
           className="h-8 px-2 md:px-3"
-          onClick={() => navigate(`/restaurant/₹{restaurant.id}/orders`)}
+          onClick={() => navigate(`/restaurant/${restaurant.id}/orders`)}
         >
           <List className="h-4 w-4" />
           <span className="hidden md:inline ml-2">Track Orders</span>

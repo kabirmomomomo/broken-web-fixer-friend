@@ -34,7 +34,7 @@ const CategoryNavigationDialog: React.FC<CategoryNavigationDialogProps> = ({
   }, []);
 
   const scrollToCategory = (categoryId: string) => {
-    const element = document.getElementById(`category-₹{categoryId}`);
+    const element = document.getElementById(`category-${categoryId}`);
     if (element) {
       element.scrollIntoView({ behavior: "smooth" });
       setIsOpen(false);

@@ -69,9 +69,9 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
               <div className="flex-1 overflow-auto pr-2 space-y-4">
                 {cartItems.map((item, index) => (
                   <div 
-                    key={`₹{item.id}-₹{item.selectedVariant?.id || 'default'}`} 
+                    key={`${item.id}-${item.selectedVariant?.id || 'default'}`} 
                     className="py-4 px-3 border-b border-purple-100 rounded-lg transition-all duration-300 hover:bg-purple-50 animate-fade-in"
-                    style={{animationDelay: `₹{index * 100}ms`}}
+                    style={{animationDelay: `${index * 100}ms`}}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -82,7 +82,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
                           </p>
                         )}
                         <p className="text-sm text-muted-foreground">
-                          ₹{item.selectedVariant ? parseFloat(item.selectedVariant.price).toFixed(2) : parseFloat(item.price).toFixed(2)}
+                          ${item.selectedVariant ? parseFloat(item.selectedVariant.price).toFixed(2) : parseFloat(item.price).toFixed(2)}
                         </p>
                       </div>
                       <Button
@@ -119,7 +119,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
                         </Button>
                       </div>
                       <div className="ml-auto font-medium text-purple-900">
-                        ₹{((item.selectedVariant ? parseFloat(item.selectedVariant.price) : parseFloat(item.price)) * item.quantity).toFixed(2)}
+                        ${((item.selectedVariant ? parseFloat(item.selectedVariant.price) : parseFloat(item.price)) * item.quantity).toFixed(2)}
                       </div>
                     </div>
                   </div>
@@ -129,11 +129,11 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
               <div className="border-t border-purple-100 py-4 mt-auto bg-white bg-opacity-70 backdrop-blur-sm rounded-t-xl">
                 <div className="flex justify-between py-2 text-sm">
                   <span className="text-purple-700">Subtotal</span>
-                  <span className="text-purple-900 font-medium">₹{getCartTotal().toFixed(2)}</span>
+                  <span className="text-purple-900 font-medium">${getCartTotal().toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between py-2 font-bold">
                   <span className="text-purple-900">Total</span>
-                  <span className="text-purple-900">₹{getCartTotal().toFixed(2)}</span>
+                  <span className="text-purple-900">${getCartTotal().toFixed(2)}</span>
                 </div>
                 <div className="mt-4 space-y-2">
                   <Button 
@@ -141,7 +141,7 @@ const Cart: React.FC<CartProps> = ({ tableId }) => {
                     onClick={handleCheckout}
                     disabled={isLoading || cartItems.length === 0}
                   >
-                    {isLoading ? 'Placing Order...' : `Checkout ₹{tableId ? `(Table ₹{tableId})` : ''}`}
+                    {isLoading ? 'Placing Order...' : `Checkout ${tableId ? `(Table ${tableId})` : ''}`}
                   </Button>
                   <Button 
                     variant="outline" 

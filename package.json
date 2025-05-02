@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "vite preview --host --port ₹PORT"
+    "start": "vite preview --host --port $PORT"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

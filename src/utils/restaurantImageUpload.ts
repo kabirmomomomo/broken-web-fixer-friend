@@ -6,8 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 export const uploadRestaurantImage = async (file: File): Promise<string | null> => {
   try {
     const fileExt = file.name.split('.').pop();
-    const fileName = `₹{uuidv4()}.₹{fileExt}`;
-    const filePath = `restaurants/₹{fileName}`;
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const filePath = `restaurants/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('restaurant-images')

@@ -190,8 +190,8 @@ const MenuPreview = () => {
     if (!restaurantToDisplay) return '';
     
     // Include table ID in QR code if available
-    const baseUrl = `₹{window.location.origin}/menu-preview/₹{restaurantToDisplay.id}`;
-    return tableId ? `₹{baseUrl}?table=₹{tableId}` : baseUrl;
+    const baseUrl = `${window.location.origin}/menu-preview/${restaurantToDisplay.id}`;
+    return tableId ? `${baseUrl}?table=${tableId}` : baseUrl;
   }, [restaurantToDisplay, tableId]);
   
   // Check if we have a table ID to enable table features

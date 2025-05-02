@@ -47,7 +47,7 @@ const OrderBill: React.FC<OrderBillProps> = ({ hideCardWrapper = false, showDown
 
       const link = document.createElement('a');
       link.href = dataUrl;
-      link.download = `receipt-₹{format(new Date(), 'yyyy-MM-dd-HH-mm')}.png`;
+      link.download = `receipt-${format(new Date(), 'yyyy-MM-dd-HH-mm')}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -75,14 +75,14 @@ const OrderBill: React.FC<OrderBillProps> = ({ hideCardWrapper = false, showDown
         </div>
         <div className="text-right w-1/3 flex flex-col">
           <span>
-            ₹{item.price.toFixed(2)} × {item.quantity} = <span className="font-bold">₹{(item.price * item.quantity).toFixed(2)}</span>
+            ${item.price.toFixed(2)} × {item.quantity} = <span className="font-bold">${(item.price * item.quantity).toFixed(2)}</span>
           </span>
         </div>
       </div>
     ));
 
   const billContent = (
-    <div ref={billRef} className={`space-y-4 bg-white p-4 rounded-xl border border-gray-200 ₹{className ?? ''}`}>
+    <div ref={billRef} className={`space-y-4 bg-white p-4 rounded-xl border border-gray-200 ${className ?? ''}`}>
       {restaurant && (
         <div className="border-b border-gray-100 pb-2 text-center mb-2">
           <h2 className="text-lg font-semibold text-purple-900">{restaurant.name}</h2>
@@ -112,7 +112,7 @@ const OrderBill: React.FC<OrderBillProps> = ({ hideCardWrapper = false, showDown
               {renderOrderItems(order.items)}
             </div>
             <div className="pt-1 text-xs text-right text-purple-700 border-t border-gray-100 mt-2">
-              Subtotal: <span className="font-semibold">₹{order.total_amount.toFixed(2)}</span>
+              Subtotal: <span className="font-semibold">${order.total_amount.toFixed(2)}</span>
             </div>
           </div>
         ))}
@@ -120,7 +120,7 @@ const OrderBill: React.FC<OrderBillProps> = ({ hideCardWrapper = false, showDown
       <div className="pt-2 border-t border-gray-300">
         <div className="flex justify-between font-semibold text-base mt-1">
           <span>Total Payable</span>
-          <span className="text-purple-700">₹{totalAmount.toFixed(2)}</span>
+          <span className="text-purple-700">${totalAmount.toFixed(2)}</span>
         </div>
       </div>
     </div>

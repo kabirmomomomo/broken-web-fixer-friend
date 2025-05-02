@@ -115,14 +115,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const subscribeToTableOrders = (restaurantId: string, tableId: string) => {
     console.log('Setting up subscription for restaurant:', restaurantId, 'table:', tableId);
     const channel = supabase
-      .channel(`table-orders-₹{restaurantId}-₹{tableId}`)
+      .channel(`table-orders-${restaurantId}-${tableId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'orders',
-          filter: `restaurant_id=eq.₹{restaurantId} AND table_id=eq.₹{tableId}`
+          filter: `restaurant_id=eq.${restaurantId} AND table_id=eq.${tableId}`
         },
         async (payload) => {
           console.log('Table orders changed:', payload);

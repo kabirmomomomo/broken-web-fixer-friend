@@ -51,7 +51,7 @@ const RestaurantForm: React.FC<RestaurantFormProps> = ({ restaurant, setRestaura
         tabIndex={0}
       >
         <h2 className="text-xl font-semibold">Restaurant Details</h2>
-        <ChevronDown className={`w-5 h-5 transform transition-transform ₹{isExpanded ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-5 h-5 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
       </div>
 
       {isExpanded && (

@@ -29,7 +29,7 @@ const LoadingAnimation = () => {
         {/* Modern pizza icon */}
         <div 
           className="absolute top-1/2 left-1/2 w-32 h-32 -translate-x-1/2 -translate-y-1/2 transition-transform duration-300"
-          style={{ transform: `translate(-50%, -50%) rotate(₹{rotation}deg)` }}
+          style={{ transform: `translate(-50%, -50%) rotate(${rotation}deg)` }}
         >
           <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-lg">
             {/* Pizza base */}
@@ -71,9 +71,9 @@ const LoadingAnimation = () => {
         <div 
           className="absolute w-10 h-10 transition-all duration-300"
           style={{
-            left: `₹{50 + 25 * Math.cos((rotation * 2 * Math.PI) / 180)}%`,
-            top: `₹{50 + 25 * Math.sin((rotation * 2 * Math.PI) / 180)}%`,
-            transform: `translate(-50%, -50%) rotate(₹{rotation * 1.5}deg)`,
+            left: `${50 + 25 * Math.cos((rotation * 2 * Math.PI) / 180)}%`,
+            top: `${50 + 25 * Math.sin((rotation * 2 * Math.PI) / 180)}%`,
+            transform: `translate(-50%, -50%) rotate(${rotation * 1.5}deg)`,
             opacity: 0.9
           }}
         >

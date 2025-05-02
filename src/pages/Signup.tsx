@@ -237,7 +237,7 @@ const Signup = () => {
 
             <Button
               type="submit"
-              className={`w-full gap-2 transition-all duration-300 ₹{isHoveringButton ? 'scale-[1.02] shadow-md' : ''}`}
+              className={`w-full gap-2 transition-all duration-300 ${isHoveringButton ? 'scale-[1.02] shadow-md' : ''}`}
               disabled={loading}
               onMouseEnter={() => setIsHoveringButton(true)}
               onMouseLeave={() => setIsHoveringButton(false)}

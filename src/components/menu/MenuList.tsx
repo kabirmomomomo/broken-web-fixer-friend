@@ -65,7 +65,7 @@ const MenuList: React.FC<MenuListProps> = ({
           {searchQuery 
             ? "No items match your search." 
             : activeTab !== "all" 
-              ? `No items found in the ₹{activeTab} category.`
+              ? `No items found in the ${activeTab} category.`
               : "No categories yet. Go to the menu editor to add categories and items."
           }
         </p>

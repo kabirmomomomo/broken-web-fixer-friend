@@ -113,7 +113,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
             )}>
               {item.old_price && parseFloat(item.old_price) > 0 && (
                 <span className="text-[10px] font-medium line-through text-gray-400">
-                  ₹{parseFloat(item.old_price).toFixed(2)}
+                  ${parseFloat(item.old_price).toFixed(2)}
                 </span>
               )}
               {(!item.variants || item.variants.length === 0) && (
@@ -121,7 +121,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                   "font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-2 py-0.5 rounded-full shadow-sm tabular-nums",
                   isMobile ? "text-xs min-w-[48px] text-center px-2" : "text-base px-2"
                 )}>
-                  ₹{parseFloat(effectivePrice).toFixed(2)}
+                  ${parseFloat(effectivePrice).toFixed(2)}
                 </span>
               )}
             </div>
@@ -172,14 +172,14 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem
                             value={variant.id}
-                            id={`variant-₹{variant.id}`}
+                            id={`variant-${variant.id}`}
                             className="text-purple-600 border-purple-300 focus:ring-purple-500 h-3 w-3"
                           />
-                          <Label htmlFor={`variant-₹{variant.id}`} className="text-xs text-purple-800">
+                          <Label htmlFor={`variant-${variant.id}`} className="text-xs text-purple-800">
                             {variant.name}
                           </Label>
                         </div>
-                        <span className="text-xs font-medium text-purple-900">₹{parseFloat(variant.price).toFixed(2)}</span>
+                        <span className="text-xs font-medium text-purple-900">${parseFloat(variant.price).toFixed(2)}</span>
                       </div>
                     ))}
                   </RadioGroup>
@@ -202,7 +202,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
                           <div key={option.id} className="flex justify-between text-xs">
                             <span>{option.name}</span>
                             <span className="font-medium">
-                              {parseFloat(option.price) > 0 ? `+₹₹{parseFloat(option.price).toFixed(2)}` : 'Free'}
+                              {parseFloat(option.price) > 0 ? `+$${parseFloat(option.price).toFixed(2)}` : 'Free'}
                             </span>
                           </div>
                         ))}
