@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
@@ -17,6 +18,7 @@ import {
   MenuItemAddonUI,
   MenuAddonOptionUI
 } from "@/services/menuService";
+import { CategoryType } from "@/types/menu"; // Add this import
 import { useIsMobile } from "@/hooks/use-mobile";
 import { lazy, Suspense } from 'react';
 import LoadingAnimation from '@/components/LoadingAnimation';
@@ -161,16 +163,22 @@ const MenuEditor = () => {
     toast.success("Category added");
   };
 
-  const updateCategory = (id: string, name: string) => {
+  const updateCategory = (id: string, name: string, type?: CategoryType) => {
     setRestaurant(prev => {
       const newState = {
         ...prev,
         categories: prev.categories.map((category) =>
-          category.id === id ? { ...category, name } : category
+          category.id === id ? { ...category, name, type } : category
         ),
       };
+      
+      // Save changes immediately through the debounced function
+      debouncedSave(newState);
+      
       return newState;
     });
+    
+    console.log(`Updating category ${id} with name: ${name} and type: ${type || 'all'}`);
   };
 
   const deleteCategory = (id: string) => {
