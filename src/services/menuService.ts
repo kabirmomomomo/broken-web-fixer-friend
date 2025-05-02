@@ -4,6 +4,7 @@ import { toast } from '@/components/ui/sonner';
 import { handleRelationDoesNotExistError } from '@/lib/setupDatabase';
 import { createClient } from '@supabase/supabase-js';
 import { optimizeImage } from '@/lib/imageOptimization';
+import { CategoryType } from '@/types/menu';
 
 // Type definitions for UI
 export interface MenuItemUI {
@@ -43,6 +44,7 @@ export interface MenuCategoryUI {
   id: string;
   name: string;
   items: MenuItemUI[];
+  type?: CategoryType;
 }
 
 export interface RestaurantUI {
@@ -241,33 +243,42 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
       
       // Fetch addon details in parallel
       if (addonMappingsResult.data?.length) {
-        const addonDetails = await Promise.all(
-          addonMappingsResult.data.map(mapping =>
-            supabase
-              .from('menu_addons')
+        for (const mapping of addonMappingsResult.data) {
+          try {
+            // Use direct query with menu_item_addons instead of menu_addons
+            const { data: addon, error: addonError } = await supabase
+              .from('menu_item_addons')
               .select('*')
               .eq('id', mapping.addon_id)
-              .single()
-          )
-        );
+              .single();
 
-        for (const { data: addon, error: addonError } of addonDetails) {
-          if (addonError) throw addonError;
-          if (addon) {
-            const { data: options, error: optionsError } = await supabase
-              .from('menu_addon_options')
-              .select('*')
-              .eq('addon_id', addon.id)
-              .order('order', { ascending: true });
+            if (addonError) {
+              if (addonError.code !== 'PGRST116') {
+                throw addonError;
+              }
+              continue;
+            }
 
-            if (optionsError) throw optionsError;
+            if (addon) {
+              const { data: options, error: optionsError } = await supabase
+                .from('menu_addon_options')
+                .select('*')
+                .eq('addon_id', addon.id)
+                .order('order', { ascending: true });
 
-            addons.push({
-              id: addon.id,
-              title: addon.title,
-              type: addon.type,
-              options: options || [],
-            });
+              if (optionsError && optionsError.code !== 'PGRST116') {
+                throw optionsError;
+              }
+
+              addons.push({
+                id: addon.id,
+                title: addon.title,
+                type: addon.type as 'Single choice' | 'Multiple choice',
+                options: options || [],
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching addon details:', error);
           }
         }
       }
@@ -290,6 +301,7 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
     categoriesWithItems.push({
       id: category.id,
       name: category.name,
+      type: category.type as CategoryType | undefined,
       items: menuItems,
     });
   }
@@ -427,6 +439,7 @@ export const saveRestaurantMenu = async (restaurant: RestaurantUI) => {
           name: category.name,
           restaurant_id: id,
           order: index,
+          type: category.type || null, // Ensure type is saved to database
           updated_at: new Date().toISOString()
         });
       
@@ -439,6 +452,7 @@ export const saveRestaurantMenu = async (restaurant: RestaurantUI) => {
               name: category.name,
               restaurant_id: id,
               order: index,
+              type: category.type || null, // Ensure type is saved to database
               updated_at: new Date().toISOString()
             });
           
