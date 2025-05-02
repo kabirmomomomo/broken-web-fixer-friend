@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -12,6 +11,7 @@ interface AuthContextType {
   supabase: typeof supabase;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -126,6 +126,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      setLoading(true);
+      console.log('Attempting to sign in with Google');
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/menu-editor`
+        }
+      });
+
+      if (error) {
+        console.error('Google signin error:', error);
+        throw error;
+      }
+      
+      // The user will be redirected to Google for authentication,
+      // so we don't need to navigate here
+      console.log('Redirecting to Google for authentication');
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('popup_closed_by_user')) {
+          toast.error('Google sign in was cancelled');
+        } else if (error.message.includes('fetch')) {
+          toast.error('Network error. Please check your connection and try again.');
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        toast.error('Failed to sign in with Google. Please try again later.');
+      }
+      setLoading(false);
+    }
+  };
+
   const signOut = async () => {
     try {
       setLoading(true);
@@ -155,7 +193,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading, 
       supabase,
       signUp, 
-      signIn, 
+      signIn,
+      signInWithGoogle,
       signOut 
     }}>
       {children}
