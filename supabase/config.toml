@@ -1,1 +1,8 @@
-project_id = "gjbnompenijpbnpakpwk"
+
+[functions]
+[functions.execute_sql]
+verify_jwt = true
+
+[[functions.execute_sql.http.paths]]
+path = "/"
+method = "POST"
