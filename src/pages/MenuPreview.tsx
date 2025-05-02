@@ -24,6 +24,7 @@ import LoadingAnimation from "@/components/LoadingAnimation";
 import { OrderProvider } from '@/contexts/OrderContext';
 import OrderHistory from '@/components/menu/OrderHistory';
 import WaiterCallButton from '@/components/menu/WaiterCallButton';
+import CategoryNavigationDialog from '@/components/menu/CategoryNavigationDialog';
 
 // Sample data as fallback when API call fails or is loading
 const sampleData: Restaurant = {
@@ -254,6 +255,12 @@ const MenuPreview = () => {
               restaurantId={restaurantToDisplay.id} 
             />
           )}
+
+          <CategoryNavigationDialog
+            categories={restaurantToDisplay.categories}
+            openCategories={openCategories}
+            toggleCategory={toggleCategory}
+          />
         </div>
         <Cart tableId={tableId || undefined} />
         <OrderHistory tableId={tableId || undefined} />
