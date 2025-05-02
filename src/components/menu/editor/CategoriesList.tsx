@@ -1,14 +1,16 @@
+
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { MenuCategoryUI } from "@/services/menuService";
 import CategoryItem from "./CategoryItem";
+import { CategoryType } from "@/types/menu";
 
 interface CategoriesListProps {
   categories: MenuCategoryUI[];
   expandedCategories: Record<string, boolean>;
   toggleCategoryExpand: (categoryId: string) => void;
-  updateCategory: (id: string, name: string) => void;
+  updateCategory: (id: string, name: string, type?: CategoryType) => void;
   deleteCategory: (id: string) => void;
   moveCategory: (index: number, direction: "up" | "down") => void;
   addMenuItem: (categoryId: string) => void;
