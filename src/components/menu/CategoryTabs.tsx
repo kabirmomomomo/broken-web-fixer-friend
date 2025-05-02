@@ -54,7 +54,7 @@ const CategoryTabs: React.FC<CategoryTabsProps> = ({ activeTab, onTabChange }) =
               tab.value === activeTab ? "font-bold" : "font-medium",
               isMobile ? "text-xs" : "text-base"
             )}
-            onClick={() => console.log(`Tab clicked: ${tab.value}`)}
+            onClick={() => console.log(`Tab clicked: ₹{tab.value}`)}
           >
             <span className="flex items-center">
               {tab.icon}

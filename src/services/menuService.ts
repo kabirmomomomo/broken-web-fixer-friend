@@ -94,8 +94,8 @@ export const uploadItemImage = async (file: File, itemId: string): Promise<strin
     const optimizedFile = await optimizeImage(file);
     
     const fileExt = optimizedFile.name.split('.').pop();
-    const fileName = `${itemId}.${fileExt}`;
-    const filePath = `${fileName}`;
+    const fileName = `₹{itemId}.₹{fileExt}`;
+    const filePath = `₹{fileName}`;
     
     const { data, error } = await supabase.storage
       .from('menu-images')
@@ -158,7 +158,7 @@ export const createRestaurant = async (name: string, description: string) => {
 };
 
 export const getRestaurantById = async (id: string): Promise<RestaurantUI | null> => {
-  const cacheKey = `restaurant_${id}`;
+  const cacheKey = `restaurant_₹{id}`;
   const cachedData = getFromCache(cacheKey);
   
   if (cachedData) {
@@ -369,7 +369,7 @@ export const getUserRestaurants = async () => {
 
 export const saveRestaurantMenu = async (restaurant: RestaurantUI) => {
   // Invalidate cache
-  cache.delete(`restaurant_${restaurant.id}`);
+  cache.delete(`restaurant_₹{restaurant.id}`);
 
   const { id, name, description, categories, image_url, google_review_link, location, phone, wifi_password, opening_time, closing_time, payment_qr_code, upi_id } = restaurant;
   

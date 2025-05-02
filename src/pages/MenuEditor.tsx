@@ -178,7 +178,7 @@ const MenuEditor = () => {
       return newState;
     });
     
-    console.log(`Updating category ${id} with name: ${name} and type: ${type || 'all'}`);
+    console.log(`Updating category ₹{id} with name: ₹{name} and type: ₹{type || 'all'}`);
   };
 
   const deleteCategory = (id: string) => {

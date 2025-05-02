@@ -27,11 +27,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const addToCart = useCallback((item: MenuItem, variant?: MenuItemVariant) => {
     setCartItems((prevItems) => {
       // Generate a unique identifier for the cart item based on item ID and variant ID
-      const itemKey = variant ? `${item.id}-${variant.id}` : item.id;
+      const itemKey = variant ? `₹{item.id}-₹{variant.id}` : item.id;
       
       // Check if this exact item with this variant already exists in cart
       const existingItemIndex = prevItems.findIndex((i) => {
-        const existingKey = i.selectedVariant ? `${i.id}-${i.selectedVariant.id}` : i.id;
+        const existingKey = i.selectedVariant ? `₹{i.id}-₹{i.selectedVariant.id}` : i.id;
         return existingKey === itemKey;
       });
       
@@ -43,19 +43,19 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           quantity: updatedItems[existingItemIndex].quantity + 1,
         };
         
-        const variantInfo = variant ? ` (${variant.name})` : '';
+        const variantInfo = variant ? ` (₹{variant.name})` : '';
         toast({
           title: "Added to cart",
-          description: `${item.name}${variantInfo} quantity updated`,
+          description: `₹{item.name}₹{variantInfo} quantity updated`,
         });
         
         return updatedItems;
       } else {
         // Item with this variant doesn't exist, add new item
-        const variantInfo = variant ? ` (${variant.name})` : '';
+        const variantInfo = variant ? ` (₹{variant.name})` : '';
         toast({
           title: "Added to cart",
-          description: `${item.name}${variantInfo} added to your cart`,
+          description: `₹{item.name}₹{variantInfo} added to your cart`,
           className: "bg-purple-100 border-purple-200 text-purple-900",
         });
         

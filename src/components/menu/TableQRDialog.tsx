@@ -217,7 +217,7 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
       
       toast({
         title: "Success",
-        description: `Updated to ${count} tables for this restaurant`
+        description: `Updated to ₹{count} tables for this restaurant`
       });
     } catch (error) {
       console.error('Error updating tables:', error);
@@ -261,12 +261,12 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
   };
 
   const downloadQRCode = async (tableId: string) => {
-    const element = document.getElementById(`qr-code-${tableId}`);
+    const element = document.getElementById(`qr-code-₹{tableId}`);
     if (!element) return;
 
     const canvas = await html2canvas(element);
     const link = document.createElement('a');
-    link.download = `table-${tableId}-qr.png`;
+    link.download = `table-₹{tableId}-qr.png`;
     link.href = canvas.toDataURL();
     link.click();
   };
@@ -340,11 +340,11 @@ const TableQRDialog: React.FC<TableQRDialogProps> = ({ restaurantId }) => {
               >
                 <div className="text-sm font-medium">Table {tableNumber}</div>
                 <div 
-                  id={`qr-code-${tableNumber}`}
+                  id={`qr-code-₹{tableNumber}`}
                   className="bg-white p-4 rounded-lg"
                 >
                   <QRCode
-                    value={`${window.location.origin}/menu-preview/${restaurantId}?table=${tableNumber}&restaurantId=${restaurantId}`}
+                    value={`₹{window.location.origin}/menu-preview/₹{restaurantId}?table=₹{tableNumber}&restaurantId=₹{restaurantId}`}
                     size={150}
                     className="h-auto max-w-full"
                   />

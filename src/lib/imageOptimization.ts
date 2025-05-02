@@ -60,7 +60,7 @@ export const optimizeImage = async (file: File): Promise<File> => {
     });
 
     // Create a new file from the blob
-    const optimizedFile = new File([webpBlob], file.name.replace(/\.[^/.]+$/, '.webp'), {
+    const optimizedFile = new File([webpBlob], file.name.replace(/\.[^/.]+₹/, '.webp'), {
       type: 'image/webp',
     });
 

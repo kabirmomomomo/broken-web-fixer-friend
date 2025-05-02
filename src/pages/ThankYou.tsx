@@ -29,7 +29,7 @@ const ThankYou = () => {
 
   // Build QR code url (fallback if menuId not available)
   const qrCodeValue = menuId
-    ? `${window.location.origin}/menu-preview/${menuId}`
+    ? `₹{window.location.origin}/menu-preview/₹{menuId}`
     : window.location.origin;
 
   useEffect(() => {
@@ -119,7 +119,7 @@ const ThankYou = () => {
             <Button
               variant="outline"
               className="w-full max-w-xs gap-2 text-lg py-4 border-purple-200 hover:bg-purple-50 shadow font-semibold"
-              onClick={() => navigate(menuId ? `/menu-preview/${menuId}` : "/")}
+              onClick={() => navigate(menuId ? `/menu-preview/₹{menuId}` : "/")}
             >
               <ArrowLeft className="w-5 h-5" />
               Back to Menu

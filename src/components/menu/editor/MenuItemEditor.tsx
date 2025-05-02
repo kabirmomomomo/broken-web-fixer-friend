@@ -281,11 +281,11 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                     <Card key={variant.id} className="p-4">
                       <div className="grid gap-4">
                         <div>
-                          <Label htmlFor={`variant-name-${variant.id}`}>
+                          <Label htmlFor={`variant-name-₹{variant.id}`}>
                             Variant Name
                           </Label>
                           <Input
-                            id={`variant-name-${variant.id}`}
+                            id={`variant-name-₹{variant.id}`}
                             ref={variantNameInputRef}
                             value={variant.name}
                             onChange={(e) =>
@@ -300,11 +300,11 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                           />
                         </div>
                         <div>
-                          <Label htmlFor={`variant-price-${variant.id}`}>
+                          <Label htmlFor={`variant-price-₹{variant.id}`}>
                             Variant Price
                           </Label>
                           <Input
-                            id={`variant-price-${variant.id}`}
+                            id={`variant-price-₹{variant.id}`}
                             ref={variantPriceInputRef}
                             value={variant.price}
                             onChange={(e) =>
@@ -351,11 +351,11 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                     <Card key={addon.id} className="p-4">
                       <div className="grid gap-4">
                         <div>
-                          <Label htmlFor={`addon-title-${addon.id}`}>
+                          <Label htmlFor={`addon-title-₹{addon.id}`}>
                             Add-on Title
                           </Label>
                           <Input
-                            id={`addon-title-${addon.id}`}
+                            id={`addon-title-₹{addon.id}`}
                             value={addon.title}
                             onChange={(e) =>
                               updateAddon(
@@ -369,11 +369,11 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                           />
                         </div>
                         <div>
-                          <Label htmlFor={`addon-type-${addon.id}`}>
+                          <Label htmlFor={`addon-type-₹{addon.id}`}>
                             Add-on Type
                           </Label>
                           <Input
-                            id={`addon-type-${addon.id}`}
+                            id={`addon-type-₹{addon.id}`}
                             value={addon.type}
                             onChange={(e) =>
                               updateAddon(
@@ -392,11 +392,11 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                               <Card key={option.id} className="p-4">
                                 <div className="grid gap-4">
                                   <div>
-                                    <Label htmlFor={`option-name-${option.id}`}>
+                                    <Label htmlFor={`option-name-₹{option.id}`}>
                                       Option Name
                                     </Label>
                                     <Input
-                                      id={`option-name-${option.id}`}
+                                      id={`option-name-₹{option.id}`}
                                       value={option.name}
                                       onChange={(e) =>
                                         updateAddonOption(
@@ -411,11 +411,11 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                                     />
                                   </div>
                                   <div>
-                                    <Label htmlFor={`option-price-${option.id}`}>
+                                    <Label htmlFor={`option-price-₹{option.id}`}>
                                       Option Price
                                     </Label>
                                     <Input
-                                      id={`option-price-${option.id}`}
+                                      id={`option-price-₹{option.id}`}
                                       value={option.price}
                                       onChange={(e) =>
                                         updateAddonOption(

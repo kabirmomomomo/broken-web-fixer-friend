@@ -6,8 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 export const uploadPaymentQR = async (file: File): Promise<string | null> => {
   try {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${uuidv4()}.${fileExt}`;
-    const filePath = `payment-qr/${fileName}`;
+    const fileName = `₹{uuidv4()}.₹{fileExt}`;
+    const filePath = `payment-qr/₹{fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('restaurant-images')

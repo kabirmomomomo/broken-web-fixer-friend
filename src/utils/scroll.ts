@@ -57,7 +57,7 @@ export const initParallax = () => {
     parallaxElements.forEach((element) => {
       const speed = Number((element as HTMLElement).dataset.speed || 0.2);
       const offset = scrollY * speed;
-      (element as HTMLElement).style.transform = `translateY(${offset}px)`;
+      (element as HTMLElement).style.transform = `translateY(₹{offset}px)`;
     });
   };
   

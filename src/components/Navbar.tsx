@@ -37,7 +37,7 @@ const Navbar = () => {
           {["About Us", "Work", "Process", "Contact Us"].map((item, idx) => (
             <a
               key={idx}
-              href={`#${item.toLowerCase().replace(/\s/g, '')}`}
+              href={`#₹{item.toLowerCase().replace(/\s/g, '')}`}
               className="relative group hover:text-blue-400"
             >
               <span>{item}</span>
@@ -81,7 +81,7 @@ const Navbar = () => {
                 {["About Us", "Work", "Process", "Contact Us"].map((item, idx) => (
                   <a
                     key={idx}
-                    href={`#${item.toLowerCase().replace(/\s/g, '')}`}
+                    href={`#₹{item.toLowerCase().replace(/\s/g, '')}`}
                     className="hover:text-blue-400"
                     onClick={() => setIsMenuOpen(false)}
                   >

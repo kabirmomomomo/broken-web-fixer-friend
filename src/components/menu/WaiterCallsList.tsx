@@ -97,7 +97,7 @@ const WaiterCallsList: React.FC<WaiterCallsListProps> = ({ restaurantId }) => {
       
       toast({
         title: "Success",
-        description: `Waiter call marked as ${newStatus} and removed`,
+        description: `Waiter call marked as ₹{newStatus} and removed`,
       });
     } catch (error: any) {
       console.error('Error processing waiter call:', error);
@@ -127,7 +127,7 @@ const WaiterCallsList: React.FC<WaiterCallsListProps> = ({ restaurantId }) => {
           event: '*',
           schema: 'public',
           table: 'waiter_calls',
-          filter: `restaurant_id=eq.${restaurantId}`,
+          filter: `restaurant_id=eq.₹{restaurantId}`,
         },
         (payload) => {
           console.log('Waiter calls change received:', payload);

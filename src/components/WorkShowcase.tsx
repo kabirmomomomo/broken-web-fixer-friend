@@ -77,7 +77,7 @@ const WorkShowcase = () => {
             <div
               key={item.id}
               className="group bg-white/5 border border-white/10 p-6 rounded-2xl backdrop-blur-md transform transition duration-500 hover:scale-[1.03] hover:border-blue-400/30 hover:shadow-[0_0_30px_5px_rgba(99,102,241,0.15)] cursor-pointer reveal"
-              style={{ animationDelay: `${index * 0.1}s` }}
+              style={{ animationDelay: `₹{index * 0.1}s` }}
             >
               <div className="flex items-start gap-4 mb-4">
                 <div className="transition-transform duration-500 group-hover:rotate-[8deg] group-hover:scale-110">

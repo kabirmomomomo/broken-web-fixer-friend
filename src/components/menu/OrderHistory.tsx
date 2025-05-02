@@ -69,13 +69,13 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ tableId }) => {
                             <span className="text-muted-foreground"> ({item.variant_name})</span>
                           )}
                         </span>
-                        <span>${(item.price * item.quantity).toFixed(2)}</span>
+                        <span>₹{(item.price * item.quantity).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
                   <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between font-medium">
                     <span>Total</span>
-                    <span>${order.total_amount.toFixed(2)}</span>
+                    <span>₹{order.total_amount.toFixed(2)}</span>
                   </div>
                 </div>
               ))}
@@ -85,13 +85,13 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ tableId }) => {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-lg font-semibold text-purple-900">Total Amount</span>
                     <span className="text-lg font-bold text-purple-900">
-                      ${totalAmount.toFixed(2)}
+                      ₹{totalAmount.toFixed(2)}
                     </span>
                   </div>
                 </div>
                 <Button 
                   className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                  onClick={() => window.location.href = `/payment/${menuId}`}
+                  onClick={() => window.location.href = `/payment/₹{menuId}`}
                 >
                   Proceed to Payment
                 </Button>
