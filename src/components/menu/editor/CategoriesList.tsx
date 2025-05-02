@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
@@ -33,18 +32,24 @@ const CategoriesList: React.FC<CategoriesListProps> = ({
   addCategory
 }) => {
   return (
-    <div className="space-y-3">
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-lg font-semibold">Menu Categories</h2>
-        <Button onClick={addCategory} variant="outline" size="sm" className="h-8 px-3">
-          <PlusCircle className="h-4 w-4 mr-2" />
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <h2 className="text-base md:text-lg font-semibold">Menu Categories</h2>
+        <Button 
+          onClick={addCategory} 
+          variant="outline" 
+          size="sm" 
+          className="h-7 px-2 md:px-3 gap-1"
+        >
+          <PlusCircle className="h-3 w-3 md:h-4 md:w-4" />
           <span className="hidden md:inline">Add Category</span>
+          <span className="md:hidden">Add</span>
         </Button>
       </div>
 
       {categories.length === 0 ? (
-        <div className="text-center py-8 border rounded-lg border-dashed">
-          <p className="text-sm text-muted-foreground">
+        <div className="text-center py-6 border rounded-lg border-dashed">
+          <p className="text-xs md:text-sm text-muted-foreground">
             No categories yet. Add your first category to get started.
           </p>
         </div>
