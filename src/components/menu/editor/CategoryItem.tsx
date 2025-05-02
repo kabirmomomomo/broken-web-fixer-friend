@@ -3,16 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MenuCategoryUI, MenuItemUI } from "@/services/menuService";
 import { ChevronUp, ChevronDown, MoveUp, MoveDown, Trash2, PlusCircle, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CategoryType } from "@/types/menu";
 
 interface CategoryItemProps {
   category: MenuCategoryUI;
   categoryIndex: number;
   isExpanded: boolean;
   toggleExpand: (categoryId: string) => void;
-  updateCategory: (id: string, name: string) => void;
+  updateCategory: (id: string, name: string, type?: CategoryType) => void;
   deleteCategory: (id: string) => void;
   moveCategory: (index: number, direction: "up" | "down") => void;
   addMenuItem: (categoryId: string) => void;
@@ -36,6 +38,11 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   setActiveItemId,
   categoriesLength,
 }) => {
+  const handleCategoryTypeChange = (value: string) => {
+    console.log(`Changing category type to: ${value}`);
+    updateCategory(category.id, category.name, value as CategoryType);
+  };
+
   return (
     <div className="border rounded-lg p-2 md:p-3 space-y-2 transition-all duration-200 hover:shadow-sm">
       <div className="flex justify-between items-center gap-2">
@@ -53,13 +60,29 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
           <Input
             id={`category-${category.id}`}
             value={category.name}
-            onChange={(e) => updateCategory(category.id, e.target.value)}
+            onChange={(e) => updateCategory(category.id, e.target.value, category.type)}
             className="h-8 text-sm md:text-base"
             placeholder="Category Name"
           />
         </div>
         
         <div className="flex items-center gap-1">
+          <Select 
+            value={category.type || "all"} 
+            onValueChange={handleCategoryTypeChange}
+          >
+            <SelectTrigger className="h-8 w-24 md:w-28">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="food">Food</SelectItem>
+              <SelectItem value="liquor">Liquor</SelectItem>
+              <SelectItem value="beverages">Beverages</SelectItem>
+              <SelectItem value="revive">Revive</SelectItem>
+            </SelectContent>
+          </Select>
+          
           <Button
             variant="ghost"
             size="icon"
