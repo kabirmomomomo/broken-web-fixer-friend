@@ -21,26 +21,130 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { RestaurantUI } from "@/services/menuService";
 
 interface RestaurantDetailsDialogProps {
-  restaurant: {
-    name: string;
-    description: string;
-    image_url?: string;
-    google_review_link?: string;
-    location?: string;
-    phone?: string;
-    wifi_password?: string;
-    opening_time?: string;
-    closing_time?: string;
-    id?: string;
-  };
-  onSave: (details: Partial<RestaurantDetailsDialogProps['restaurant']>) => void;
-  children?: React.ReactNode;
+  restaurant: RestaurantUI;
+  onSave: (details: Partial<RestaurantUI>) => void;
+  children: React.ReactNode;
 }
 
-const getDraftKey = (restaurant: RestaurantDetailsDialogProps['restaurant']) => 
+const getDraftKey = (restaurant: RestaurantUI) => 
   `restaurant_details_draft_${restaurant.id ?? restaurant.name}`;
+
+const FormContent: React.FC<{
+  formData: RestaurantUI;
+  setFormData: React.Dispatch<React.SetStateAction<RestaurantUI>>;
+  onSubmit: (e: React.FormEvent) => void;
+  onCancel: () => void;
+}> = ({ formData, setFormData, onSubmit, onCancel }) => {
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.target.select();
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="col-span-2">
+          <Label htmlFor="image_url">Restaurant Image URL</Label>
+          <Input
+            id="image_url"
+            value={formData.image_url || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
+            placeholder="https://example.com/image.jpg"
+            onFocus={handleFocus}
+          />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="name">Restaurant Name</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            required
+            onFocus={handleFocus}
+          />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            required
+            onFocus={handleFocus}
+          />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="google_review_link">Google Review Link</Label>
+          <Input
+            id="google_review_link"
+            value={formData.google_review_link || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, google_review_link: e.target.value }))}
+            placeholder="https://g.page/..."
+            onFocus={handleFocus}
+          />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="location">Location</Label>
+          <Input
+            id="location"
+            value={formData.location || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+            placeholder="123 Restaurant St, City"
+            onFocus={handleFocus}
+          />
+        </div>
+        <div className="col-span-2 sm:col-span-1">
+          <Label htmlFor="phone">Phone Number</Label>
+          <Input
+            id="phone"
+            value={formData.phone || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+            placeholder="+1 (555) 123-4567"
+            onFocus={handleFocus}
+          />
+        </div>
+        <div className="col-span-2 sm:col-span-1">
+          <Label htmlFor="wifi_password">WiFi Password</Label>
+          <Input
+            id="wifi_password"
+            value={formData.wifi_password || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, wifi_password: e.target.value }))}
+            placeholder="restaurant123"
+            onFocus={handleFocus}
+          />
+        </div>
+        <div className="col-span-2 sm:col-span-1">
+          <Label htmlFor="opening_time">Opening Time</Label>
+          <Input
+            id="opening_time"
+            value={formData.opening_time || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, opening_time: e.target.value }))}
+            placeholder="11:00 AM"
+            onFocus={handleFocus}
+          />
+        </div>
+        <div className="col-span-2 sm:col-span-1">
+          <Label htmlFor="closing_time">Closing Time</Label>
+          <Input
+            id="closing_time"
+            value={formData.closing_time || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, closing_time: e.target.value }))}
+            placeholder="10:00 PM"
+            onFocus={handleFocus}
+          />
+        </div>
+      </div>
+      <div className="flex justify-end gap-3 sticky bottom-0 bg-background py-4 border-t">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit">Save Changes</Button>
+      </div>
+    </form>
+  );
+};
 
 const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
   restaurant,
@@ -51,160 +155,59 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
   const [formData, setFormData] = React.useState(restaurant);
   const isMobile = useIsMobile();
 
+  // Load unsaved changes from localStorage when component mounts
   React.useEffect(() => {
-    if (!isOpen) return;
     const draftKey = getDraftKey(restaurant);
-    const draft = localStorage.getItem(draftKey);
-    if (draft) {
+    const savedChanges = localStorage.getItem(draftKey);
+    if (savedChanges) {
       try {
-        setFormData(JSON.parse(draft));
-      } catch {
-        setFormData(restaurant);
+        const parsedChanges = JSON.parse(savedChanges);
+        setFormData(parsedChanges);
+      } catch (error) {
+        console.error('Error loading unsaved changes:', error);
+        localStorage.removeItem(draftKey);
       }
-    } else {
-      setFormData(restaurant);
     }
-  }, [restaurant, isOpen]);
+  }, [restaurant]);
 
+  // Save changes to localStorage whenever formData changes
   React.useEffect(() => {
-    if (!isOpen) return;
-    const draftKey = getDraftKey(restaurant);
-    localStorage.setItem(draftKey, JSON.stringify(formData));
-  }, [formData, isOpen]);
+    if (isOpen) {
+      const draftKey = getDraftKey(restaurant);
+      localStorage.setItem(draftKey, JSON.stringify(formData));
+    }
+  }, [formData, isOpen, restaurant]);
 
-  const clearDraft = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+    toast.success("Restaurant details saved");
+    setIsOpen(false);
+    // Clear unsaved changes from localStorage after saving
     const draftKey = getDraftKey(restaurant);
     localStorage.removeItem(draftKey);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Saving restaurant details:", formData);
-    onSave(formData);
-    toast.success("Restaurant details saved");
-    setIsOpen(false);
-    clearDraft();
-  };
-
   const handleCancel = () => {
     setIsOpen(false);
-    clearDraft();
+    // Clear unsaved changes from localStorage when canceling
+    const draftKey = getDraftKey(restaurant);
+    localStorage.removeItem(draftKey);
+    // Reset form data to original restaurant data
     setFormData(restaurant);
   };
 
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.target.select();
-  };
-
-  const FormContent = () => (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2">
-          <Label htmlFor="image_url">Restaurant Image URL</Label>
-          <Input
-            id="image_url"
-            value={formData.image_url || ''}
-            onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-            placeholder="https://example.com/image.jpg"
-            onFocus={handleFocus}
-          />
-        </div>
-        <div className="col-span-2">
-          <Label htmlFor="name">Restaurant Name</Label>
-          <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-            onFocus={handleFocus}
-          />
-        </div>
-        <div className="col-span-2">
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            required
-            onFocus={handleFocus}
-          />
-        </div>
-        <div className="col-span-2">
-          <Label htmlFor="google_review_link">Google Review Link</Label>
-          <Input
-            id="google_review_link"
-            value={formData.google_review_link || ''}
-            onChange={(e) => setFormData({ ...formData, google_review_link: e.target.value })}
-            placeholder="https://g.page/..."
-            onFocus={handleFocus}
-          />
-        </div>
-        <div className="col-span-2">
-          <Label htmlFor="location">Location</Label>
-          <Input
-            id="location"
-            value={formData.location || ''}
-            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-            placeholder="123 Restaurant St, City"
-            onFocus={handleFocus}
-          />
-        </div>
-        <div className="col-span-2 sm:col-span-1">
-          <Label htmlFor="phone">Phone Number</Label>
-          <Input
-            id="phone"
-            value={formData.phone || ''}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            placeholder="+1 (555) 123-4567"
-            onFocus={handleFocus}
-          />
-        </div>
-        <div className="col-span-2 sm:col-span-1">
-          <Label htmlFor="wifi_password">WiFi Password</Label>
-          <Input
-            id="wifi_password"
-            value={formData.wifi_password || ''}
-            onChange={(e) => setFormData({ ...formData, wifi_password: e.target.value })}
-            placeholder="restaurant123"
-            onFocus={handleFocus}
-          />
-        </div>
-        <div className="col-span-2 sm:col-span-1">
-          <Label htmlFor="opening_time">Opening Time</Label>
-          <Input
-            id="opening_time"
-            value={formData.opening_time || ''}
-            onChange={(e) => setFormData({ ...formData, opening_time: e.target.value })}
-            placeholder="11:00 AM"
-            onFocus={handleFocus}
-          />
-        </div>
-        <div className="col-span-2 sm:col-span-1">
-          <Label htmlFor="closing_time">Closing Time</Label>
-          <Input
-            id="closing_time"
-            value={formData.closing_time || ''}
-            onChange={(e) => setFormData({ ...formData, closing_time: e.target.value })}
-            placeholder="10:00 PM"
-            onFocus={handleFocus}
-          />
-        </div>
-      </div>
-      <div className="flex justify-end gap-3 sticky bottom-0 bg-background py-4 border-t">
-        <Button type="button" variant="outline" onClick={handleCancel}>
-          Cancel
-        </Button>
-        <Button type="submit">Save Changes</Button>
-      </div>
-    </form>
-  );
+  // Update formData when restaurant prop changes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setFormData(restaurant);
+    }
+  }, [restaurant, isOpen]);
 
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger asChild>
-          {children}
-        </SheetTrigger>
+        <SheetTrigger asChild>{children}</SheetTrigger>
         <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
           <SheetHeader className="mb-4">
             <SheetTitle>Edit Restaurant Details</SheetTitle>
@@ -212,7 +215,12 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
               Update your restaurant's information and contact details
             </SheetDescription>
           </SheetHeader>
-          <FormContent />
+          <FormContent
+            formData={formData}
+            setFormData={setFormData}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+          />
         </SheetContent>
       </Sheet>
     );
@@ -220,9 +228,7 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Restaurant Details</DialogTitle>
@@ -230,7 +236,12 @@ const RestaurantDetailsDialog: React.FC<RestaurantDetailsDialogProps> = ({
             Update your restaurant's information and contact details
           </DialogDescription>
         </DialogHeader>
-        <FormContent />
+        <FormContent
+          formData={formData}
+          setFormData={setFormData}
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+        />
       </DialogContent>
     </Dialog>
   );
