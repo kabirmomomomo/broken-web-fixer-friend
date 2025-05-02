@@ -78,3 +78,8 @@ export type DatabaseWithCustomTables = Database & {
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<DatabaseWithCustomTables>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+export const executeSql = async (sqlString: string) => {
+  const { data, error } = await supabase.rpc('execute_sql', { sql_string: sqlString });
+  return { data, error };
+};
