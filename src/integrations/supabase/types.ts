@@ -258,10 +258,10 @@ export type Database = {
           category_id: string
           created_at: string | null
           description: string | null
+          dietary_type: string | null
           id: string
           image_url: string | null
           is_available: boolean | null
-          is_vegetarian: boolean | null
           is_visible: boolean | null
           name: string
           old_price: string | null
@@ -274,10 +274,10 @@ export type Database = {
           category_id: string
           created_at?: string | null
           description?: string | null
+          dietary_type?: string | null
           id: string
           image_url?: string | null
           is_available?: boolean | null
-          is_vegetarian?: boolean | null
           is_visible?: boolean | null
           name: string
           old_price?: string | null
@@ -290,10 +290,10 @@ export type Database = {
           category_id?: string
           created_at?: string | null
           description?: string | null
+          dietary_type?: string | null
           id?: string
           image_url?: string | null
           is_available?: boolean | null
-          is_vegetarian?: boolean | null
           is_visible?: boolean | null
           name?: string
           old_price?: string | null
@@ -415,18 +415,11 @@ export type Database = {
           location: string | null
           name: string
           opening_time: string | null
-          payment_gateway_merchant_id: string | null
-          payment_gateway_public_key: string | null
-          payment_gateway_type: string | null
           payment_qr_code: string | null
           phone: string | null
-          stripe_account_id: string | null
-          stripe_public_key: string | null
           table_count: number | null
           updated_at: string | null
           upi_id: string | null
-          use_payment_gateway: boolean | null
-          use_stripe_payments: boolean | null
           user_id: string
           wifi_password: string | null
         }
@@ -440,18 +433,11 @@ export type Database = {
           location?: string | null
           name: string
           opening_time?: string | null
-          payment_gateway_merchant_id?: string | null
-          payment_gateway_public_key?: string | null
-          payment_gateway_type?: string | null
           payment_qr_code?: string | null
           phone?: string | null
-          stripe_account_id?: string | null
-          stripe_public_key?: string | null
           table_count?: number | null
           updated_at?: string | null
           upi_id?: string | null
-          use_payment_gateway?: boolean | null
-          use_stripe_payments?: boolean | null
           user_id: string
           wifi_password?: string | null
         }
@@ -465,18 +451,11 @@ export type Database = {
           location?: string | null
           name?: string
           opening_time?: string | null
-          payment_gateway_merchant_id?: string | null
-          payment_gateway_public_key?: string | null
-          payment_gateway_type?: string | null
           payment_qr_code?: string | null
           phone?: string | null
-          stripe_account_id?: string | null
-          stripe_public_key?: string | null
           table_count?: number | null
           updated_at?: string | null
           upi_id?: string | null
-          use_payment_gateway?: boolean | null
-          use_stripe_payments?: boolean | null
           user_id?: string
           wifi_password?: string | null
         }
