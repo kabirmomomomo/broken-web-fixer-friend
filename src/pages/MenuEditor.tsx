@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
@@ -208,7 +207,8 @@ const MenuEditor = () => {
                   is_visible: true,
                   is_available: true,
                   variants: [],
-                  addons: []
+                  addons: [],
+                  dietary_type: null,
                 },
               ],
             }
@@ -225,8 +225,10 @@ const MenuEditor = () => {
     categoryId: string,
     itemId: string,
     field: keyof MenuItemUI,
-    value: string | boolean
+    value: string | boolean | null
   ) => {
+    console.log(`Updating menu item ${itemId}, field: ${field}, value: ${value}`);
+    
     setRestaurant(prev => {
       const newState = {
         ...prev,
@@ -241,6 +243,19 @@ const MenuEditor = () => {
             : category
         ),
       };
+      
+      // Save changes immediately if dietary_type is changed
+      if (field === "dietary_type") {
+        console.log(`Updated dietary_type for item ${itemId} to ${value}`);
+        // Initiate save to database
+        setTimeout(() => {
+          saveMenuMutation.mutate(newState);
+        }, 100);
+      } else {
+        // For other fields, use the debounced save
+        debouncedSave(newState);
+      }
+      
       return newState;
     });
   };
