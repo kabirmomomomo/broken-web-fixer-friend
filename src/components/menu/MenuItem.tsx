@@ -1,8 +1,9 @@
+
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { MenuItem as MenuItemType, MenuItemVariant } from "@/types/menu";
 import { useCart } from "@/contexts/CartContext";
-import { PlusCircle, MinusCircle, CircleSlash } from "lucide-react";
+import { PlusCircle, MinusCircle, CircleSlash, LeafyGreen, Beef } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -62,6 +63,16 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
 
   const hasOptions = !!(item.variants?.length > 0 || item.addons?.length > 0);
 
+  const renderDietaryIcon = () => {
+    console.log(`Rendering dietary icon for item ${item.id}: ${JSON.stringify(item.dietary_type)}`);
+    if (item.dietary_type === 'veg') {
+      return <LeafyGreen size={isMobile ? 14 : 16} className="text-green-600 flex-shrink-0" />;
+    } else if (item.dietary_type === 'non-veg') {
+      return <Beef size={isMobile ? 14 : 16} className="text-red-600 flex-shrink-0" />;
+    }
+    return null;
+  };
+
   return (
     <div
       key={item.id}
@@ -101,12 +112,15 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
             "flex items-center justify-between w-full gap-2",
             isMobile ? "flex-col items-center gap-0 mb-1" : ""
           )}>
-            <h3 className={cn(
-              "font-semibold text-purple-900 truncate leading-tight",
-              isMobile ? "text-xs w-full mb-0 px-1" : "text-lg"
-            )}>
-              {item.name}
-            </h3>
+            <div className="flex items-center gap-1">
+              {renderDietaryIcon()}
+              <h3 className={cn(
+                "font-semibold text-purple-900 truncate leading-tight",
+                isMobile ? "text-xs w-full mb-0 px-1" : "text-lg"
+              )}>
+                {item.name}
+              </h3>
+            </div>
             <div className={cn(
               "flex flex-col items-end gap-0 flex-shrink-0",
               isMobile ? "items-center" : ""
