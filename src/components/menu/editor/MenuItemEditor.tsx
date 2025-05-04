@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -8,9 +9,10 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, Check, PlusCircle, Image as ImageIcon } from "lucide-react";
+import { X, Check, PlusCircle, Image as ImageIcon, Beef, LeafyGreen } from "lucide-react";
 import { MenuItemUI, MenuItemVariantUI, MenuItemAddonUI, MenuAddonOptionUI } from "@/services/menuService";
 import { toast } from "@/components/ui/sonner";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface MenuItemEditorProps {
   activeItem: MenuItemUI;
@@ -19,7 +21,7 @@ interface MenuItemEditorProps {
     categoryId: string,
     itemId: string,
     field: keyof MenuItemUI,
-    value: string | boolean
+    value: string | boolean | null
   ) => void;
   addVariant: (categoryId: string, itemId: string) => void;
   updateVariant: (
@@ -114,6 +116,27 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
     }
   };
 
+  const handleDietaryTypeChange = (value: string) => {
+    // Log before updating to see the current and new values
+    console.log(`Changing dietary type from ${activeItem.dietary_type} to ${value === "none" ? null : value}`);
+    
+    // Make sure to pass the correct type value to the updateMenuItem function
+    updateMenuItem(
+      activeCategoryId,
+      activeItem.id,
+      "dietary_type",
+      value === "none" ? null : value as "veg" | "non-veg"
+    );
+    
+    // Log the change to ensure it's being properly captured
+    console.log(`Set dietary type to: ${value}, activeItem now shows: ${activeItem.dietary_type}`);
+    
+    // Immediately save the menu to persist the change
+    setTimeout(() => {
+      handleSaveMenu();
+    }, 100);
+  };
+
   return (
     <div className="space-y-4">
       <div className="space-y-4">
@@ -181,7 +204,7 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                   <Textarea
                     id="item-description"
                     ref={descriptionInputRef}
-                    value={activeItem.description}
+                    value={activeItem.description || ''}
                     onChange={(e) =>
                       updateMenuItem(
                         activeCategoryId,
@@ -242,6 +265,36 @@ const MenuItemEditor: React.FC<MenuItemEditorProps> = ({
                     />
                   </div>
                 </div>
+                
+                {/* Dietary Type Selection */}
+                <div>
+                  <Label htmlFor="dietary-type" className="mb-2 block">Dietary Type</Label>
+                  <RadioGroup 
+                    value={activeItem.dietary_type || "none"}
+                    onValueChange={handleDietaryTypeChange}
+                    className="flex flex-col space-y-1"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="none" id="dietary-none" />
+                      <Label htmlFor="dietary-none" className="cursor-pointer">Not specified</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="veg" id="dietary-veg" />
+                      <Label htmlFor="dietary-veg" className="cursor-pointer flex items-center">
+                        <LeafyGreen className="h-4 w-4 mr-1 text-green-600" />
+                        Vegetarian
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="non-veg" id="dietary-non-veg" />
+                      <Label htmlFor="dietary-non-veg" className="cursor-pointer flex items-center">
+                        <Beef className="h-4 w-4 mr-1 text-red-600" />
+                        Non-Vegetarian
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                
                 <div className="flex items-center space-x-2">
                   <Label htmlFor="item-visible">Visible</Label>
                   <Switch
