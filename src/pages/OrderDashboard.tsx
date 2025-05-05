@@ -126,6 +126,51 @@
       }
     };
     
+    const deleteOrderItem = async (orderId: string, itemId: string) => {
+      try {
+        // First, get the order to calculate the new total
+        const { data: order, error: orderError } = await supabase
+          .from('orders')
+          .select('*, items:order_items(*)')
+          .eq('id', orderId)
+          .single();
+
+        if (orderError) throw orderError;
+
+        // Find the item to be deleted
+        const itemToDelete = order.items.find((item: OrderItem) => item.id === itemId);
+        if (!itemToDelete) {
+          throw new Error('Item not found');
+        }
+
+        // Calculate new total amount
+        const newTotalAmount = order.total_amount - (itemToDelete.price * itemToDelete.quantity);
+
+        // Delete the item
+        const { error: deleteError } = await supabase
+          .from('order_items')
+          .delete()
+          .eq('id', itemId);
+
+        if (deleteError) throw deleteError;
+
+        // Update the order's total amount
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({ total_amount: newTotalAmount })
+          .eq('id', orderId);
+
+        if (updateError) throw updateError;
+
+        // Refresh orders
+        await fetchOrders();
+        toast.success('Item deleted successfully');
+      } catch (err: any) {
+        console.error('Error deleting order item:', err);
+        toast.error('Failed to delete item');
+      }
+    };
+    
     const deleteTableOrders = async (tableId: string) => {
       if (!restaurantId) {
         toast.error('Restaurant ID is missing');
@@ -485,7 +530,21 @@
                                         <span className="text-gray-500 text-xs"> ({item.variant_name})</span>
                                       )}
                                     </span>
-                                    <span>${(item.price * item.quantity).toFixed(2)}</span>
+                                    <div className="flex items-center gap-2">
+                                      <span>${(item.price * item.quantity).toFixed(2)}</span>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-destructive hover:text-destructive"
+                                        onClick={() => {
+                                          if (window.confirm(`Are you sure you want to delete ${item.quantity}× ${item.item_name}?`)) {
+                                            deleteOrderItem(order.id, item.id);
+                                          }
+                                        }}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
                                   </div>
                                 ))}
                                 <Separator className="my-2" />
