@@ -1,5 +1,6 @@
+
 import { supabase } from './supabase';
-import { toast } from '@/components/ui/toast';
+import { useToast } from '@/hooks/use-toast';
 
 // Function to execute SQL commands directly - useful for database setup
 export const executeSql = async (sqlString: string) => {
@@ -95,11 +96,8 @@ export const setupDatabase = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error("Error setting up database:", error);
-    toast({
-      title: "Database Setup Error",
-      description: "Failed to set up database tables. Please try again.",
-      variant: "destructive",
-    });
+    // Instead of using toast directly, just log the error
+    console.error("Database Setup Error: Failed to set up database tables. Please try again.");
     return false;
   }
 };
