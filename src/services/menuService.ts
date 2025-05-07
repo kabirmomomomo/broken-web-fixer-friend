@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from '@/components/ui/sonner';
@@ -65,7 +66,7 @@ export interface RestaurantUI {
 }
 
 // Add cache configuration
-const CACHE_DURATION = 0; // Set to 0 to disable caching
+const CACHE_DURATION = 0; // Keep caching disabled to ensure fresh data
 const cache = new Map<string, { data: any; timestamp: number }>();
 
 // Add cache helper functions
@@ -166,6 +167,23 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
   console.log("Fetching restaurant data for ID:", id);
   console.log("Using Supabase client:", supabase);
 
+  // Verify Supabase connection is working properly
+  try {
+    const { data: connectionTest, error: connectionError } = await supabase
+      .from('restaurants')
+      .select('id')
+      .limit(1);
+      
+    if (connectionError) {
+      console.error("Supabase connection test failed:", connectionError);
+      throw connectionError;
+    } else {
+      console.log("Supabase connection verified successfully");
+    }
+  } catch (e) {
+    console.error("Failed to verify Supabase connection:", e);
+  }
+
   const { data: restaurant, error } = await supabase
     .from('restaurants')
     .select('*')
@@ -229,7 +247,22 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
     for (const item of items || []) {
       console.log(`Processing item ${item.name} (${item.id})`);
       
-      // Fetch variants with explicit debug info
+      // First check if variants exist in the database for this item
+      try {
+        // Direct SQL query to check for variants
+        const { data: variantsCheck, error: variantsCheckError } = await supabase.rpc('execute_sql', {
+          sql_string: `SELECT COUNT(*) FROM menu_item_variants WHERE menu_item_id = '${item.id}'`
+        });
+        
+        if (!variantsCheckError) {
+          console.log(`Variants count check for ${item.name}:`, variantsCheck);
+        }
+      } catch (e) {
+        console.log(`Failed to check variants count for ${item.name}:`, e);
+      }
+      
+      // Fetch variants with explicit debug info and double-check
+      console.log(`Fetching variants for item ${item.id} using standard select`);
       const variantsPromise = supabase
         .from('menu_item_variants')
         .select('*')
@@ -247,13 +280,33 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
         }
       }
       
+      // Try a different approach if no variants found
+      let variants = variantsResult.data || [];
+      
+      // If no variants found through normal query, try direct SQL query
+      if (variants.length === 0) {
+        console.log(`No variants found for ${item.name} using standard query, trying direct SQL`);
+        try {
+          const { data: directVariants, error: directError } = await supabase.rpc('execute_sql', {
+            sql_string: `SELECT * FROM menu_item_variants WHERE menu_item_id = '${item.id}' ORDER BY "order" ASC`
+          });
+          
+          if (!directError && directVariants && Array.isArray(directVariants) && directVariants.length > 0) {
+            console.log(`Found variants using direct SQL for ${item.name}:`, directVariants);
+            variants = directVariants;
+          }
+        } catch (e) {
+          console.error(`Failed direct SQL variant query for ${item.name}:`, e);
+        }
+      }
+      
       console.log(`Raw variants response for ${item.name}:`, JSON.stringify(variantsResult));
-      console.log(`Item ${item.name} has ${variantsResult.data?.length || 0} variants`);
+      console.log(`Item ${item.name} has ${variants.length || 0} variants`);
       
       // Log each variant if any
-      if (variantsResult.data && variantsResult.data.length > 0) {
-        console.log(`Variants for ${item.name}:`, JSON.stringify(variantsResult.data));
-        variantsResult.data.forEach((variant, i) => {
+      if (variants && variants.length > 0) {
+        console.log(`Variants for ${item.name}:`, JSON.stringify(variants));
+        variants.forEach((variant, i) => {
           console.log(`- Variant ${i+1}: ${variant.id} - ${variant.name} - ${variant.price}`);
         });
       }
@@ -282,7 +335,7 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
         image_url: item.image_url,
         is_visible: item.is_visible,
         is_available: item.is_available,
-        variants: variantsResult.data || [],
+        variants: variants,
         addons: addons,
         dietary_type: item.dietary_type as "veg" | "non-veg" | null,
       });

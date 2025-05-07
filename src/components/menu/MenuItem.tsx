@@ -45,6 +45,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
   useEffect(() => {
     if (item.variants && item.variants.length > 0) {
       setSelectedVariant(item.variants[0]);
+      console.log(`Selected initial variant for ${item.name}:`, item.variants[0]);
     } else {
       setSelectedVariant(undefined);
     }
@@ -84,6 +85,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
   const handleVariantChange = (variantId: string) => {
     const variant = item.variants?.find(v => v.id === variantId);
     setSelectedVariant(variant);
+    console.log(`Changed variant for ${item.name} to:`, variant);
   };
 
   const hasOptions = !!(item.variants?.length > 0 || item.addons?.length > 0);
