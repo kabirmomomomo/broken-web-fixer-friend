@@ -1,6 +1,7 @@
+
 import { supabase } from './supabase';
 import { executeSql } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/sonner';
 
 export const setupDatabase = async () => {
   try {

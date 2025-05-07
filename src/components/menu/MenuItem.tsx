@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { MenuItem as MenuItemType, MenuItemVariant } from "@/types/menu";
 import { useCart } from "@/contexts/CartContext";
@@ -24,6 +24,16 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
   const [selectedVariant, setSelectedVariant] = useState<MenuItemVariant | undefined>(
     item.variants && item.variants.length > 0 ? item.variants[0] : undefined
   );
+
+  // Log the item and its variants when component mounts
+  useEffect(() => {
+    if (item.variants && item.variants.length > 0) {
+      console.log(`Item ${item.name} has ${item.variants.length} variants:`, 
+        JSON.stringify(item.variants));
+    } else {
+      console.log(`Item ${item.name} has no variants`);
+    }
+  }, [item]);
 
   const effectivePrice = selectedVariant ? selectedVariant.price : item.price;
 

@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getRestaurantById } from "@/services/menuService";
 import { setupDatabase, handleRelationDoesNotExistError } from "@/lib/setupDatabase";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { CategoryType, Restaurant } from "@/types/menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -65,9 +65,9 @@ const MenuPreview = () => {
   const [activeTab, setActiveTab] = useState<CategoryType>("food");
   const isMobile = useIsMobile();
 
-  // Optimize query with better caching and error handling
+  // Optimize query with better caching and error handling, with no stale time for fresh data on mobile
   const { data: restaurant, isLoading, error, refetch } = useQuery({
-    queryKey: ['restaurant', menuId],
+    queryKey: ['restaurant', menuId, tableId], // Added tableId to the query key for different cache per table
     queryFn: async () => {
       if (!menuId) return null;
       
@@ -116,8 +116,8 @@ const MenuPreview = () => {
       }
     },
     retry: 1, // Reduce retry attempts
-    staleTime: 60000, // Cache results for 1 minute to reduce refetching
-    gcTime: 300000, // Keep unused data in cache for 5 minutes (renamed from cacheTime)
+    staleTime: 0, // No cache for mobile devices with QR codes
+    gcTime: 10000, // Shorter cache time for menu data
     enabled: !!menuId,
   });
 
@@ -227,6 +227,14 @@ const MenuPreview = () => {
     return null; // Should never happen, but TypeScript wants this check
   }
 
+  // Specifically for mobile devices, force a refetch on mount to ensure fresh data
+  useEffect(() => {
+    if (isMobile && tableId && menuId) {
+      console.log("Mobile device detected with tableId, refreshing data");
+      refetch();
+    }
+  }, [isMobile, tableId, menuId, refetch]);
+  
   return (
     <CartProvider>
       <OrderProvider>

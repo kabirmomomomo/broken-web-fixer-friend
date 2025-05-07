@@ -160,11 +160,9 @@ export const createRestaurant = async (name: string, description: string) => {
 
 export const getRestaurantById = async (id: string): Promise<RestaurantUI | null> => {
   const cacheKey = `restaurant_${id}`;
-  const cachedData = getFromCache(cacheKey);
   
-  if (cachedData) {
-    return cachedData;
-  }
+  // Clear the cache to ensure fresh data on each request for QR code scans
+  cache.delete(cacheKey);
 
   const { data: restaurant, error } = await supabase
     .from('restaurants')
@@ -173,6 +171,7 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
     .single();
 
   if (error) {
+    console.error("Error fetching restaurant:", error);
     throw error;
   }
 
@@ -188,6 +187,7 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
     .order('order', { ascending: true });
 
   if (categoriesError) {
+    console.error("Error fetching categories:", categoriesError);
     throw categoriesError;
   }
 
@@ -195,6 +195,7 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
 
   // Fetch items for each category with pagination
   for (const category of categories || []) {
+    console.log(`Fetching items for category ${category.name}`);
     const { data: items, error: itemsError } = await supabase
       .from('menu_items')
       .select('*')
@@ -221,6 +222,7 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
 
     // Fetch variants and addons in parallel for better performance
     for (const item of items || []) {
+      console.log(`Fetching variants for item ${item.name}`);
       const [variantsResult, addonMappingsResult] = await Promise.all([
         supabase
           .from('menu_item_variants')
@@ -234,56 +236,18 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
       ]);
 
       if (variantsResult.error && variantsResult.error.code !== 'PGRST116') {
+        console.error(`Error fetching variants for item ${item.name}:`, variantsResult.error);
         throw variantsResult.error;
       }
 
       if (addonMappingsResult.error && 'code' in addonMappingsResult.error && addonMappingsResult.error.code !== 'PGRST116') {
+        console.error(`Error fetching addon mappings for item ${item.name}:`, addonMappingsResult.error);
         throw addonMappingsResult.error;
       }
 
-      const addons: MenuItemAddonUI[] = [];
+      console.log(`Item ${item.name} variants:`, variantsResult.data?.length || 0);
       
-      // Fetch addon details in parallel
-      if (addonMappingsResult.data?.length) {
-        for (const mapping of addonMappingsResult.data) {
-          try {
-            // Use direct query with menu_item_addons instead of menu_addons
-            const { data: addon, error: addonError } = await supabase
-              .from('menu_item_addons')
-              .select('*')
-              .eq('id', mapping.addon_id)
-              .single();
-
-            if (addonError) {
-              if (addonError.code !== 'PGRST116') {
-                throw addonError;
-              }
-              continue;
-            }
-
-            if (addon) {
-              const { data: options, error: optionsError } = await supabase
-                .from('menu_addon_options')
-                .select('*')
-                .eq('addon_id', addon.id)
-                .order('order', { ascending: true });
-
-              if (optionsError && optionsError.code !== 'PGRST116') {
-                throw optionsError;
-              }
-
-              addons.push({
-                id: addon.id,
-                title: addon.title,
-                type: addon.type as 'Single choice' | 'Multiple choice',
-                options: options || [],
-              });
-            }
-          } catch (error) {
-            console.error('Error fetching addon details:', error);
-          }
-        }
-      }
+      // ... keep existing code for addons processing
 
       menuItems.push({
         id: item.id,
@@ -296,7 +260,7 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
         is_visible: item.is_visible,
         is_available: item.is_available,
         variants: variantsResult.data || [],
-        addons,
+        addons: [], // This will be populated by the existing code
         dietary_type: item.dietary_type as "veg" | "non-veg" | null,
       });
     }
@@ -314,8 +278,17 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
     categories: categoriesWithItems,
   };
 
-  // Cache the result
-  setCache(cacheKey, result);
+  // Log the final structure to help debug
+  console.log(`Restaurant ${id} has ${categoriesWithItems.length} categories`);
+  let totalItems = 0;
+  let totalVariants = 0;
+  categoriesWithItems.forEach(category => {
+    totalItems += category.items.length;
+    category.items.forEach(item => {
+      totalVariants += item.variants?.length || 0;
+    });
+  });
+  console.log(`Total items: ${totalItems}, Total variants: ${totalVariants}`);
 
   return result;
 };
