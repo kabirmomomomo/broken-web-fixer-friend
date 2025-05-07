@@ -1,7 +1,17 @@
 
 import { supabase } from './supabase';
-import { executeSql } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
+
+// Define a simpler executeSql function since the imported one isn't available
+const executeSql = async (sql: string) => {
+  try {
+    const { data, error } = await supabase.rpc('execute_sql', { query: sql });
+    return { data, error };
+  } catch (error) {
+    console.error('Error executing SQL:', error);
+    return { data: null, error };
+  }
+};
 
 export const setupDatabase = async () => {
   try {
@@ -217,7 +227,7 @@ export const handleTableConstraints = async () => {
       return false;
     }
 
-    // Instead of using supabase client for tables_temp, use the executeSql function
+    // Use our local executeSql function for tables_temp
     const { error: tempTableError } = await executeSql(`
       CREATE TABLE IF NOT EXISTS tables_temp (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -233,7 +243,7 @@ export const handleTableConstraints = async () => {
       return false;
     }
 
-    // Create a test entry using raw SQL via executeSql
+    // Create a test entry using our local executeSql function
     const { error: insertError } = await executeSql(`
       INSERT INTO tables_temp (restaurant_id, table_number) 
       VALUES ('00000000-0000-0000-0000-000000000000', 0)

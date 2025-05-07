@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -197,6 +198,14 @@ const MenuPreview = () => {
   // Check if we have a table ID to enable table features
   const isTableContext = !!tableId;
   
+  // Specifically for mobile devices, force a refetch on mount to ensure fresh data
+  useEffect(() => {
+    if (isMobile && tableId && menuId) {
+      console.log("Mobile device detected with tableId, refreshing data");
+      refetch();
+    }
+  }, [isMobile, tableId, menuId, refetch]);
+
   // Show loading state
   if (isLoading) {
     return <LoadingAnimation />;
@@ -226,68 +235,58 @@ const MenuPreview = () => {
   if (!restaurantToDisplay) {
     return null; // Should never happen, but TypeScript wants this check
   }
-
-  // Specifically for mobile devices, force a refetch on mount to ensure fresh data
-  useEffect(() => {
-    if (isMobile && tableId && menuId) {
-      console.log("Mobile device detected with tableId, refreshing data");
-      refetch();
-    }
-  }, [isMobile, tableId, menuId, refetch]);
   
   return (
-    <CartProvider>
-      <OrderProvider>
-        <div className="bg-gradient-to-b from-blue-50 to-white min-h-screen font-sans">
-          <PageHeader qrCodeValue={qrCodeValue} />
-          <DatabaseWarning isDbError={isDbError} />
-          <RestaurantHeader 
-            name={restaurantToDisplay.name} 
-            description={restaurantToDisplay.description}
-            image_url={restaurantToDisplay.image_url}
-            google_review_link={restaurantToDisplay.google_review_link}
-            location={restaurantToDisplay.location}
-            phone={restaurantToDisplay.phone}
-            wifi_password={restaurantToDisplay.wifi_password}
-            opening_time={restaurantToDisplay.opening_time}
-            closing_time={restaurantToDisplay.closing_time}
-          />
-          
-          <div className="mb-4">
-            <CategoryTabs activeTab={activeTab} onTabChange={handleTabChange} />
-          </div>
+    <div className="bg-gradient-to-b from-blue-50 to-white min-h-screen font-sans">
+      <PageHeader qrCodeValue={qrCodeValue} />
+      <DatabaseWarning isDbError={isDbError} />
+      <RestaurantHeader 
+        name={restaurantToDisplay.name} 
+        description={restaurantToDisplay.description}
+        image_url={restaurantToDisplay.image_url}
+        google_review_link={restaurantToDisplay.google_review_link}
+        location={restaurantToDisplay.location}
+        phone={restaurantToDisplay.phone}
+        wifi_password={restaurantToDisplay.wifi_password}
+        opening_time={restaurantToDisplay.opening_time}
+        closing_time={restaurantToDisplay.closing_time}
+      />
+      
+      <div className="mb-4">
+        <CategoryTabs activeTab={activeTab} onTabChange={handleTabChange} />
+      </div>
 
-          <div className={isMobile ? "px-2" : "px-6"}>
-            <SearchBar onSearch={handleSearch} />
-            
-            <MenuList 
-              categories={restaurantToDisplay.categories} 
-              openCategories={openCategories} 
-              toggleCategory={toggleCategory}
-              searchQuery={searchQuery}
-              activeTab={activeTab}
-            />
-          </div>
-          
-          <MenuFooter />
-          {tableId && (
-            <WaiterCallButton 
-              tableId={tableId} 
-              restaurantId={restaurantToDisplay.id} 
-            />
-          )}
+      <div className={isMobile ? "px-2" : "px-6"}>
+        <SearchBar onSearch={handleSearch} />
+        
+        <MenuList 
+          categories={restaurantToDisplay.categories} 
+          openCategories={openCategories} 
+          toggleCategory={toggleCategory}
+          searchQuery={searchQuery}
+          activeTab={activeTab}
+        />
+      </div>
+      
+      <MenuFooter />
+      {tableId && (
+        <WaiterCallButton 
+          tableId={tableId} 
+          restaurantId={restaurantToDisplay.id} 
+        />
+      )}
 
-          <CategoryNavigationDialog
-            categories={restaurantToDisplay.categories}
-            openCategories={openCategories}
-            toggleCategory={toggleCategory}
-          />
-        </div>
-        <Cart tableId={tableId || undefined} />
-        <OrderHistory tableId={tableId || undefined} />
-        <Toaster />
-      </OrderProvider>
-    </CartProvider>
+      <CategoryNavigationDialog
+        categories={restaurantToDisplay.categories}
+        openCategories={openCategories}
+        toggleCategory={toggleCategory}
+      />
+      
+      {/* Cart, OrderHistory, and Toaster are rendered outside the main component */}
+      <Cart tableId={tableId || undefined} />
+      <OrderHistory tableId={tableId || undefined} />
+      <Toaster />
+    </div>
   );
 };
 
