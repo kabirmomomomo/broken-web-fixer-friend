@@ -65,7 +65,7 @@ export interface RestaurantUI {
 }
 
 // Add cache configuration
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 0; // Set to 0 to disable caching
 const cache = new Map<string, { data: any; timestamp: number }>();
 
 // Add cache helper functions
@@ -164,6 +164,7 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
   cache.delete(cacheKey);
   
   console.log("Fetching restaurant data for ID:", id);
+  console.log("Using Supabase client:", supabase);
 
   const { data: restaurant, error } = await supabase
     .from('restaurants')
@@ -228,22 +229,33 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
     for (const item of items || []) {
       console.log(`Processing item ${item.name} (${item.id})`);
       
-      // Fetch variants with explicit logging
-      console.log(`Fetching variants for item ${item.name} (${item.id})`);
-      const variantsResult = await supabase
+      // Fetch variants with explicit debug info
+      const variantsPromise = supabase
         .from('menu_item_variants')
         .select('*')
         .eq('menu_item_id', item.id)
         .order('order', { ascending: true });
-        
-      if (variantsResult.error && variantsResult.error.code !== 'PGRST116') {
+      
+      console.log(`Sent variants query for item ${item.id}`);
+      
+      const variantsResult = await variantsPromise;
+      
+      if (variantsResult.error) {
         console.error(`Error fetching variants for item ${item.name}:`, variantsResult.error);
-        throw variantsResult.error;
+        if (variantsResult.error.code !== 'PGRST116') {
+          throw variantsResult.error;
+        }
       }
       
+      console.log(`Raw variants response for ${item.name}:`, JSON.stringify(variantsResult));
       console.log(`Item ${item.name} has ${variantsResult.data?.length || 0} variants`);
+      
+      // Log each variant if any
       if (variantsResult.data && variantsResult.data.length > 0) {
-        console.log(`Variant details for ${item.name}:`, JSON.stringify(variantsResult.data));
+        console.log(`Variants for ${item.name}:`, JSON.stringify(variantsResult.data));
+        variantsResult.data.forEach((variant, i) => {
+          console.log(`- Variant ${i+1}: ${variant.id} - ${variant.name} - ${variant.price}`);
+        });
       }
 
       // Fetch addon mappings
@@ -289,7 +301,7 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
     categories: categoriesWithItems,
   };
 
-  // Log the final structure to help debug
+  // Debug final structure
   console.log(`Restaurant ${id} has ${categoriesWithItems.length} categories`);
   let totalItems = 0;
   let totalVariants = 0;
@@ -297,6 +309,10 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
     totalItems += category.items.length;
     category.items.forEach(item => {
       totalVariants += item.variants?.length || 0;
+      if (item.variants && item.variants.length > 0) {
+        console.log(`Item ${item.name} has ${item.variants.length} variants:`);
+        item.variants.forEach(v => console.log(`  - ${v.name}: ${v.price}`));
+      }
     });
   });
   console.log(`Total items: ${totalItems}, Total variants: ${totalVariants}`);

@@ -6,9 +6,17 @@ import { supabase as hardcodedClient } from '@/integrations/supabase/client';
 export const isDatabaseAvailable = !!import.meta.env.VITE_SUPABASE_URL && 
                                   !!import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Create and export the supabase client - use the hardcoded client as fallback
-export const supabase = hardcodedClient;
+// Create and export the supabase client
+export const supabase = isDatabaseAvailable 
+  ? createClient(
+      import.meta.env.VITE_SUPABASE_URL, 
+      import.meta.env.VITE_SUPABASE_ANON_KEY
+    )
+  : hardcodedClient;
 
 // Log which client is being used
-console.log('Using hardcoded Supabase client with project ID: gjbnompenijpbnpakpwk');
-
+if (isDatabaseAvailable) {
+  console.log('Using environment Supabase client');
+} else {
+  console.log('Using hardcoded Supabase client with project ID: gjbnompenijpbnpakpwk');
+}
