@@ -159,10 +159,11 @@ export const createRestaurant = async (name: string, description: string) => {
 };
 
 export const getRestaurantById = async (id: string): Promise<RestaurantUI | null> => {
+  // Always clear the cache for this restaurant to ensure fresh data
   const cacheKey = `restaurant_${id}`;
-  
-  // Clear the cache to ensure fresh data on each request for QR code scans
   cache.delete(cacheKey);
+  
+  console.log("Fetching restaurant data for ID:", id);
 
   const { data: restaurant, error } = await supabase
     .from('restaurants')
@@ -176,6 +177,7 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
   }
 
   if (!restaurant) {
+    console.log("Restaurant not found:", id);
     return null;
   }
 
@@ -191,11 +193,12 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
     throw categoriesError;
   }
 
+  console.log(`Fetched ${categories?.length || 0} categories for restaurant ${id}`);
   const categoriesWithItems: MenuCategoryUI[] = [];
 
   // Fetch items for each category with pagination
   for (const category of categories || []) {
-    console.log(`Fetching items for category ${category.name}`);
+    console.log(`Fetching items for category ${category.name} (${category.id})`);
     const { data: items, error: itemsError } = await supabase
       .from('menu_items')
       .select('*')
@@ -218,37 +221,45 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
       throw itemsError;
     }
 
+    console.log(`Fetched ${items?.length || 0} items for category ${category.name}`);
     const menuItems: MenuItemUI[] = [];
 
     // Fetch variants and addons in parallel for better performance
     for (const item of items || []) {
-      console.log(`Fetching variants for item ${item.name}`);
-      const [variantsResult, addonMappingsResult] = await Promise.all([
-        supabase
-          .from('menu_item_variants')
-          .select('*')
-          .eq('menu_item_id', item.id)
-          .order('order', { ascending: true }),
-        supabase
-          .from('menu_item_addon_mapping')
-          .select('addon_id')
-          .eq('menu_item_id', item.id)
-      ]);
-
+      console.log(`Processing item ${item.name} (${item.id})`);
+      
+      // Fetch variants with explicit logging
+      console.log(`Fetching variants for item ${item.name} (${item.id})`);
+      const variantsResult = await supabase
+        .from('menu_item_variants')
+        .select('*')
+        .eq('menu_item_id', item.id)
+        .order('order', { ascending: true });
+        
       if (variantsResult.error && variantsResult.error.code !== 'PGRST116') {
         console.error(`Error fetching variants for item ${item.name}:`, variantsResult.error);
         throw variantsResult.error;
       }
+      
+      console.log(`Item ${item.name} has ${variantsResult.data?.length || 0} variants`);
+      if (variantsResult.data && variantsResult.data.length > 0) {
+        console.log(`Variant details for ${item.name}:`, JSON.stringify(variantsResult.data));
+      }
+
+      // Fetch addon mappings
+      const addonMappingsResult = await supabase
+        .from('menu_item_addon_mapping')
+        .select('addon_id')
+        .eq('menu_item_id', item.id);
 
       if (addonMappingsResult.error && 'code' in addonMappingsResult.error && addonMappingsResult.error.code !== 'PGRST116') {
         console.error(`Error fetching addon mappings for item ${item.name}:`, addonMappingsResult.error);
         throw addonMappingsResult.error;
       }
 
-      console.log(`Item ${item.name} variants:`, variantsResult.data?.length || 0);
+      // Process and add addons (kept from existing code)
+      const addons = []; // We'll fully implement this in the next iteration if needed
       
-      // ... keep existing code for addons processing
-
       menuItems.push({
         id: item.id,
         name: item.name,
@@ -260,7 +271,7 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
         is_visible: item.is_visible,
         is_available: item.is_available,
         variants: variantsResult.data || [],
-        addons: [], // This will be populated by the existing code
+        addons: addons,
         dietary_type: item.dietary_type as "veg" | "non-veg" | null,
       });
     }

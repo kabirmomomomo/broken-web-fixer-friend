@@ -66,14 +66,14 @@ const MenuPreview = () => {
   const [activeTab, setActiveTab] = useState<CategoryType>("food");
   const isMobile = useIsMobile();
 
-  // Optimize query with better caching and error handling, with no stale time for fresh data on mobile
+  // For QR code scans, we need to ensure fresh data is loaded every time
   const { data: restaurant, isLoading, error, refetch } = useQuery({
-    queryKey: ['restaurant', menuId, tableId], // Added tableId to the query key for different cache per table
+    queryKey: ['restaurant', menuId, tableId, isMobile], // Added isMobile to the query key for different cache per device type
     queryFn: async () => {
       if (!menuId) return null;
       
       try {
-        console.log("Attempting to fetch restaurant with ID:", menuId);
+        console.log("Attempting to fetch restaurant with ID:", menuId, "on device type:", isMobile ? "mobile" : "desktop");
         
         // Check if database connection is available
         try {
@@ -97,7 +97,24 @@ const MenuPreview = () => {
           return null;
         }
         
-        console.log("Successfully fetched restaurant from database:", restaurantData);
+        // Log the structure to debug variants
+        console.log("Successfully fetched restaurant from database:", menuId);
+        console.log("Categories count:", restaurantData.categories.length);
+        
+        // Check variants data
+        let totalItems = 0;
+        let totalVariants = 0;
+        restaurantData.categories.forEach(category => {
+          totalItems += category.items.length;
+          category.items.forEach(item => {
+            totalVariants += item.variants?.length || 0;
+            if (item.variants && item.variants.length > 0) {
+              console.log(`Item ${item.name} has ${item.variants.length} variants`);
+            }
+          });
+        });
+        console.log(`Total items: ${totalItems}, Total variants: ${totalVariants}`);
+        
         return restaurantData;
       } catch (error: any) {
         // If we get a "relation does not exist" error, try to set up the database
@@ -117,8 +134,8 @@ const MenuPreview = () => {
       }
     },
     retry: 1, // Reduce retry attempts
-    staleTime: 0, // No cache for mobile devices with QR codes
-    gcTime: 10000, // Shorter cache time for menu data
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 0, // No cache retention
     enabled: !!menuId,
   });
 
@@ -198,13 +215,13 @@ const MenuPreview = () => {
   // Check if we have a table ID to enable table features
   const isTableContext = !!tableId;
   
-  // Specifically for mobile devices, force a refetch on mount to ensure fresh data
+  // Always force a refetch on mount to ensure fresh data
   useEffect(() => {
-    if (isMobile && tableId && menuId) {
-      console.log("Mobile device detected with tableId, refreshing data");
+    if (menuId) {
+      console.log("Component mounted, forcing data refresh for menu ID:", menuId);
       refetch();
     }
-  }, [isMobile, tableId, menuId, refetch]);
+  }, [menuId, refetch]);
 
   // Show loading state
   if (isLoading) {
