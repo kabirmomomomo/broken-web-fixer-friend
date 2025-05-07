@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from '@/components/ui/sonner';
@@ -66,7 +65,7 @@ export interface RestaurantUI {
 }
 
 // Add cache configuration
-const CACHE_DURATION = 0; // Keep caching disabled to ensure fresh data
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const cache = new Map<string, { data: any; timestamp: number }>();
 
 // Add cache helper functions
@@ -160,28 +159,11 @@ export const createRestaurant = async (name: string, description: string) => {
 };
 
 export const getRestaurantById = async (id: string): Promise<RestaurantUI | null> => {
-  // Always clear the cache for this restaurant to ensure fresh data
   const cacheKey = `restaurant_${id}`;
-  cache.delete(cacheKey);
+  const cachedData = getFromCache(cacheKey);
   
-  console.log("Fetching restaurant data for ID:", id);
-  console.log("Using Supabase client:", supabase);
-
-  // Verify Supabase connection is working properly
-  try {
-    const { data: connectionTest, error: connectionError } = await supabase
-      .from('restaurants')
-      .select('id')
-      .limit(1);
-      
-    if (connectionError) {
-      console.error("Supabase connection test failed:", connectionError);
-      throw connectionError;
-    } else {
-      console.log("Supabase connection verified successfully");
-    }
-  } catch (e) {
-    console.error("Failed to verify Supabase connection:", e);
+  if (cachedData) {
+    return cachedData;
   }
 
   const { data: restaurant, error } = await supabase
@@ -191,12 +173,10 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
     .single();
 
   if (error) {
-    console.error("Error fetching restaurant:", error);
     throw error;
   }
 
   if (!restaurant) {
-    console.log("Restaurant not found:", id);
     return null;
   }
 
@@ -208,16 +188,13 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
     .order('order', { ascending: true });
 
   if (categoriesError) {
-    console.error("Error fetching categories:", categoriesError);
     throw categoriesError;
   }
 
-  console.log(`Fetched ${categories?.length || 0} categories for restaurant ${id}`);
   const categoriesWithItems: MenuCategoryUI[] = [];
 
   // Fetch items for each category with pagination
   for (const category of categories || []) {
-    console.log(`Fetching items for category ${category.name} (${category.id})`);
     const { data: items, error: itemsError } = await supabase
       .from('menu_items')
       .select('*')
@@ -240,91 +217,74 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
       throw itemsError;
     }
 
-    console.log(`Fetched ${items?.length || 0} items for category ${category.name}`);
     const menuItems: MenuItemUI[] = [];
 
     // Fetch variants and addons in parallel for better performance
     for (const item of items || []) {
-      console.log(`Processing item ${item.name} (${item.id})`);
-      
-      // First check if variants exist in the database for this item
-      try {
-        // Direct SQL query to check for variants
-        const { data: variantsCheck, error: variantsCheckError } = await supabase.rpc('execute_sql', {
-          sql_string: `SELECT COUNT(*) FROM menu_item_variants WHERE menu_item_id = '${item.id}'`
-        });
-        
-        if (!variantsCheckError) {
-          console.log(`Variants count check for ${item.name}:`, variantsCheck);
-        }
-      } catch (e) {
-        console.log(`Failed to check variants count for ${item.name}:`, e);
-      }
-      
-      // Fetch variants with explicit debug info and double-check
-      console.log(`Fetching variants for item ${item.id} using standard select`);
-      const variantsPromise = supabase
-        .from('menu_item_variants')
-        .select('*')
-        .eq('menu_item_id', item.id)
-        .order('order', { ascending: true });
-      
-      console.log(`Sent variants query for item ${item.id}`);
-      
-      const variantsResult = await variantsPromise;
-      
-      if (variantsResult.error) {
-        console.error(`Error fetching variants for item ${item.name}:`, variantsResult.error);
-        if (variantsResult.error.code !== 'PGRST116') {
-          throw variantsResult.error;
-        }
-      }
-      
-      // Try a different approach if no variants found
-      let variants = variantsResult.data || [];
-      
-      // If no variants found through normal query, try direct SQL query
-      if (variants.length === 0) {
-        console.log(`No variants found for ${item.name} using standard query, trying direct SQL`);
-        try {
-          const { data: directVariants, error: directError } = await supabase.rpc('execute_sql', {
-            sql_string: `SELECT * FROM menu_item_variants WHERE menu_item_id = '${item.id}' ORDER BY "order" ASC`
-          });
-          
-          if (!directError && directVariants && Array.isArray(directVariants) && directVariants.length > 0) {
-            console.log(`Found variants using direct SQL for ${item.name}:`, directVariants);
-            variants = directVariants;
-          }
-        } catch (e) {
-          console.error(`Failed direct SQL variant query for ${item.name}:`, e);
-        }
-      }
-      
-      console.log(`Raw variants response for ${item.name}:`, JSON.stringify(variantsResult));
-      console.log(`Item ${item.name} has ${variants.length || 0} variants`);
-      
-      // Log each variant if any
-      if (variants && variants.length > 0) {
-        console.log(`Variants for ${item.name}:`, JSON.stringify(variants));
-        variants.forEach((variant, i) => {
-          console.log(`- Variant ${i+1}: ${variant.id} - ${variant.name} - ${variant.price}`);
-        });
-      }
+      const [variantsResult, addonMappingsResult] = await Promise.all([
+        supabase
+          .from('menu_item_variants')
+          .select('*')
+          .eq('menu_item_id', item.id)
+          .order('order', { ascending: true }),
+        supabase
+          .from('menu_item_addon_mapping')
+          .select('addon_id')
+          .eq('menu_item_id', item.id)
+      ]);
 
-      // Fetch addon mappings
-      const addonMappingsResult = await supabase
-        .from('menu_item_addon_mapping')
-        .select('addon_id')
-        .eq('menu_item_id', item.id);
+      if (variantsResult.error && variantsResult.error.code !== 'PGRST116') {
+        throw variantsResult.error;
+      }
 
       if (addonMappingsResult.error && 'code' in addonMappingsResult.error && addonMappingsResult.error.code !== 'PGRST116') {
-        console.error(`Error fetching addon mappings for item ${item.name}:`, addonMappingsResult.error);
         throw addonMappingsResult.error;
       }
 
-      // Process and add addons (kept from existing code)
-      const addons = []; // We'll fully implement this in the next iteration if needed
+      const addons: MenuItemAddonUI[] = [];
       
+      // Fetch addon details in parallel
+      if (addonMappingsResult.data?.length) {
+        for (const mapping of addonMappingsResult.data) {
+          try {
+            // Use direct query with menu_item_addons instead of menu_addons
+            const { data: addon, error: addonError } = await supabase
+              .from('menu_item_addons')
+              .select('*')
+              .eq('id', mapping.addon_id)
+              .single();
+
+            if (addonError) {
+              if (addonError.code !== 'PGRST116') {
+                throw addonError;
+              }
+              continue;
+            }
+
+            if (addon) {
+              const { data: options, error: optionsError } = await supabase
+                .from('menu_addon_options')
+                .select('*')
+                .eq('addon_id', addon.id)
+                .order('order', { ascending: true });
+
+              if (optionsError && optionsError.code !== 'PGRST116') {
+                throw optionsError;
+              }
+
+              addons.push({
+                id: addon.id,
+                title: addon.title,
+                type: addon.type as 'Single choice' | 'Multiple choice',
+                options: options || [],
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching addon details:', error);
+          }
+        }
+      }
+
       menuItems.push({
         id: item.id,
         name: item.name,
@@ -335,8 +295,8 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
         image_url: item.image_url,
         is_visible: item.is_visible,
         is_available: item.is_available,
-        variants: variants,
-        addons: addons,
+        variants: variantsResult.data || [],
+        addons,
         dietary_type: item.dietary_type as "veg" | "non-veg" | null,
       });
     }
@@ -354,21 +314,8 @@ export const getRestaurantById = async (id: string): Promise<RestaurantUI | null
     categories: categoriesWithItems,
   };
 
-  // Debug final structure
-  console.log(`Restaurant ${id} has ${categoriesWithItems.length} categories`);
-  let totalItems = 0;
-  let totalVariants = 0;
-  categoriesWithItems.forEach(category => {
-    totalItems += category.items.length;
-    category.items.forEach(item => {
-      totalVariants += item.variants?.length || 0;
-      if (item.variants && item.variants.length > 0) {
-        console.log(`Item ${item.name} has ${item.variants.length} variants:`);
-        item.variants.forEach(v => console.log(`  - ${v.name}: ${v.price}`));
-      }
-    });
-  });
-  console.log(`Total items: ${totalItems}, Total variants: ${totalVariants}`);
+  // Cache the result
+  setCache(cacheKey, result);
 
   return result;
 };

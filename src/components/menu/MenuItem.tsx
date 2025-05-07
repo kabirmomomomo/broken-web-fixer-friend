@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { MenuItem as MenuItemType, MenuItemVariant } from "@/types/menu";
 import { useCart } from "@/contexts/CartContext";
@@ -20,36 +21,9 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
 
   const isMobile = useIsMobile();
   const { addToCart, updateQuantity, cartItems } = useCart();
-  
-  // Add more comprehensive logging for variants
-  useEffect(() => {
-    console.log(`Rendering MenuItem: ${item.id} - ${item.name}`);
-    console.log(`Item variants:`, JSON.stringify(item.variants || []));
-    
-    if (item.variants && item.variants.length > 0) {
-      console.log(`Item ${item.name} has ${item.variants.length} variants`);
-      item.variants.forEach(variant => {
-        console.log(`- Variant: ${variant.id} - ${variant.name} - $${variant.price}`);
-      });
-    } else {
-      console.log(`Item ${item.name} has no variants`);
-    }
-  }, [item]);
-
-  // Use the first variant as default if variants exist
   const [selectedVariant, setSelectedVariant] = useState<MenuItemVariant | undefined>(
     item.variants && item.variants.length > 0 ? item.variants[0] : undefined
   );
-
-  // Make sure to update selectedVariant if the item's variants change
-  useEffect(() => {
-    if (item.variants && item.variants.length > 0) {
-      setSelectedVariant(item.variants[0]);
-      console.log(`Selected initial variant for ${item.name}:`, item.variants[0]);
-    } else {
-      setSelectedVariant(undefined);
-    }
-  }, [item.variants]);
 
   const effectivePrice = selectedVariant ? selectedVariant.price : item.price;
 
@@ -85,31 +59,16 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
   const handleVariantChange = (variantId: string) => {
     const variant = item.variants?.find(v => v.id === variantId);
     setSelectedVariant(variant);
-    console.log(`Changed variant for ${item.name} to:`, variant);
   };
 
   const hasOptions = !!(item.variants?.length > 0 || item.addons?.length > 0);
 
   const renderDietaryIcon = () => {
+    console.log(`Rendering dietary icon for item ${item.id}: ${JSON.stringify(item.dietary_type)}`);
     if (item.dietary_type === 'veg') {
       return <LeafyGreen size={isMobile ? 14 : 16} className="text-green-600 flex-shrink-0" />;
     } else if (item.dietary_type === 'non-veg') {
       return <Beef size={isMobile ? 14 : 16} className="text-red-600 flex-shrink-0" />;
-    }
-    return null;
-  };
-
-  // If item has variants, display them for debugging
-  const debugVariants = () => {
-    if (process.env.NODE_ENV !== 'production' && item.variants && item.variants.length > 0) {
-      return (
-        <div className="bg-yellow-100 p-1 text-xs mt-1 rounded">
-          <div>Debug - Variants ({item.variants.length}):</div>
-          {item.variants.map(v => (
-            <div key={v.id}>{v.name}: ${v.price}</div>
-          ))}
-        </div>
-      );
     }
     return null;
   };
@@ -268,8 +227,6 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, index }) => {
               )}
             </div>
           )}
-
-          {debugVariants()}
 
           <div className={cn(
             "flex w-full justify-end items-center mt-1",

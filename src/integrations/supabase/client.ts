@@ -6,20 +6,80 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://gjbnompenijpbnpakpwk.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqYm5vbXBlbmlqcGJucGFrcHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ2MzEwNzksImV4cCI6MjA2MDIwNzA3OX0.lZV9etn-8FhgRuxFQwGCQplw-iB4M4kvqR2m7ziUqKs";
 
+export type TablesCustomTypes = {
+  tables: {
+    Row: {
+      id: string;
+      restaurant_id: string;
+      table_number: number;
+      created_at: string | null;
+      updated_at: string | null;
+    };
+    Insert: {
+      id?: string;
+      restaurant_id: string;
+      table_number: number;
+      created_at?: string | null;
+      updated_at?: string | null;
+    };
+    Update: {
+      id?: string;
+      restaurant_id?: string;
+      table_number?: number;
+      created_at?: string | null;
+      updated_at?: string | null;
+    };
+  };
+  orders_with_table_id: {
+    Row: {
+      id: string;
+      restaurant_id: string;
+      table_id: string | null;
+      device_id: string | null;
+      total_amount: number;
+      status: string;
+      created_at: string | null;
+      updated_at: string | null;
+      user_id?: string | null;
+    };
+    Insert: {
+      id?: string;
+      restaurant_id: string;
+      table_id?: string | null;
+      device_id?: string | null;
+      total_amount: number;
+      status?: string;
+      created_at?: string | null;
+      updated_at?: string | null;
+      user_id?: string | null;
+    };
+    Update: {
+      id?: string;
+      restaurant_id?: string;
+      table_id?: string | null;
+      device_id?: string | null;
+      total_amount?: number;
+      status?: string;
+      created_at?: string | null;
+      updated_at?: string | null;
+      user_id?: string | null;
+    };
+  };
+};
+
+// Extended Database type with our custom tables
+export type DatabaseWithCustomTables = Database & {
+  public: {
+    Tables: Database['public']['Tables'] & TablesCustomTypes
+  }
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<DatabaseWithCustomTables>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-// Add the missing executeSql function
 export const executeSql = async (sqlString: string) => {
-  try {
-    const { data, error } = await supabase.rpc('execute_sql', { sql_string: sqlString });
-    if (error) {
-      return { error };
-    }
-    return { data };
-  } catch (error) {
-    return { error };
-  }
+  const { data, error } = await supabase.rpc('execute_sql', { sql_string: sqlString });
+  return { data, error };
 };

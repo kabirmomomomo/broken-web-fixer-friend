@@ -1,5 +1,4 @@
 
-
   export interface MenuItem {
     id: string;
     name: string;
@@ -12,7 +11,6 @@
     is_available?: boolean;
     variants?: MenuItemVariant[];
     addons?: MenuItemAddon[];
-    dietary_type?: 'veg' | 'non-veg' | null;
   }
 
   export interface MenuItemVariant {
@@ -57,4 +55,3 @@
     opening_time?: string;
     closing_time?: string;
   }
-

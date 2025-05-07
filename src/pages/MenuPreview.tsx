@@ -1,11 +1,10 @@
-
 import React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getRestaurantById } from "@/services/menuService";
 import { setupDatabase, handleRelationDoesNotExistError } from "@/lib/setupDatabase";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { CategoryType, Restaurant } from "@/types/menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -66,14 +65,14 @@ const MenuPreview = () => {
   const [activeTab, setActiveTab] = useState<CategoryType>("food");
   const isMobile = useIsMobile();
 
-  // For QR code scans, we need to ensure fresh data is loaded every time
+  // Optimize query with better caching and error handling
   const { data: restaurant, isLoading, error, refetch } = useQuery({
-    queryKey: ['restaurant', menuId, tableId, isMobile], // Added isMobile to the query key for different cache per device type
+    queryKey: ['restaurant', menuId],
     queryFn: async () => {
       if (!menuId) return null;
       
       try {
-        console.log("Attempting to fetch restaurant with ID:", menuId, "on device type:", isMobile ? "mobile" : "desktop");
+        console.log("Attempting to fetch restaurant with ID:", menuId);
         
         // Check if database connection is available
         try {
@@ -97,24 +96,7 @@ const MenuPreview = () => {
           return null;
         }
         
-        // Log the structure to debug variants
-        console.log("Successfully fetched restaurant from database:", menuId);
-        console.log("Categories count:", restaurantData.categories.length);
-        
-        // Check variants data
-        let totalItems = 0;
-        let totalVariants = 0;
-        restaurantData.categories.forEach(category => {
-          totalItems += category.items.length;
-          category.items.forEach(item => {
-            totalVariants += item.variants?.length || 0;
-            if (item.variants && item.variants.length > 0) {
-              console.log(`Item ${item.name} has ${item.variants.length} variants`);
-            }
-          });
-        });
-        console.log(`Total items: ${totalItems}, Total variants: ${totalVariants}`);
-        
+        console.log("Successfully fetched restaurant from database:", restaurantData);
         return restaurantData;
       } catch (error: any) {
         // If we get a "relation does not exist" error, try to set up the database
@@ -134,8 +116,8 @@ const MenuPreview = () => {
       }
     },
     retry: 1, // Reduce retry attempts
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 0, // No cache retention
+    staleTime: 60000, // Cache results for 1 minute to reduce refetching
+    gcTime: 300000, // Keep unused data in cache for 5 minutes (renamed from cacheTime)
     enabled: !!menuId,
   });
 
@@ -215,14 +197,6 @@ const MenuPreview = () => {
   // Check if we have a table ID to enable table features
   const isTableContext = !!tableId;
   
-  // Always force a refetch on mount to ensure fresh data
-  useEffect(() => {
-    if (menuId) {
-      console.log("Component mounted, forcing data refresh for menu ID:", menuId);
-      refetch();
-    }
-  }, [menuId, refetch]);
-
   // Show loading state
   if (isLoading) {
     return <LoadingAnimation />;
@@ -252,58 +226,60 @@ const MenuPreview = () => {
   if (!restaurantToDisplay) {
     return null; // Should never happen, but TypeScript wants this check
   }
-  
+
   return (
-    <div className="bg-gradient-to-b from-blue-50 to-white min-h-screen font-sans">
-      <PageHeader qrCodeValue={qrCodeValue} />
-      <DatabaseWarning isDbError={isDbError} />
-      <RestaurantHeader 
-        name={restaurantToDisplay.name} 
-        description={restaurantToDisplay.description}
-        image_url={restaurantToDisplay.image_url}
-        google_review_link={restaurantToDisplay.google_review_link}
-        location={restaurantToDisplay.location}
-        phone={restaurantToDisplay.phone}
-        wifi_password={restaurantToDisplay.wifi_password}
-        opening_time={restaurantToDisplay.opening_time}
-        closing_time={restaurantToDisplay.closing_time}
-      />
-      
-      <div className="mb-4">
-        <CategoryTabs activeTab={activeTab} onTabChange={handleTabChange} />
-      </div>
+    <CartProvider>
+      <OrderProvider>
+        <div className="bg-gradient-to-b from-blue-50 to-white min-h-screen font-sans">
+          <PageHeader qrCodeValue={qrCodeValue} />
+          <DatabaseWarning isDbError={isDbError} />
+          <RestaurantHeader 
+            name={restaurantToDisplay.name} 
+            description={restaurantToDisplay.description}
+            image_url={restaurantToDisplay.image_url}
+            google_review_link={restaurantToDisplay.google_review_link}
+            location={restaurantToDisplay.location}
+            phone={restaurantToDisplay.phone}
+            wifi_password={restaurantToDisplay.wifi_password}
+            opening_time={restaurantToDisplay.opening_time}
+            closing_time={restaurantToDisplay.closing_time}
+          />
+          
+          <div className="mb-4">
+            <CategoryTabs activeTab={activeTab} onTabChange={handleTabChange} />
+          </div>
 
-      <div className={isMobile ? "px-2" : "px-6"}>
-        <SearchBar onSearch={handleSearch} />
-        
-        <MenuList 
-          categories={restaurantToDisplay.categories} 
-          openCategories={openCategories} 
-          toggleCategory={toggleCategory}
-          searchQuery={searchQuery}
-          activeTab={activeTab}
-        />
-      </div>
-      
-      <MenuFooter />
-      {tableId && (
-        <WaiterCallButton 
-          tableId={tableId} 
-          restaurantId={restaurantToDisplay.id} 
-        />
-      )}
+          <div className={isMobile ? "px-2" : "px-6"}>
+            <SearchBar onSearch={handleSearch} />
+            
+            <MenuList 
+              categories={restaurantToDisplay.categories} 
+              openCategories={openCategories} 
+              toggleCategory={toggleCategory}
+              searchQuery={searchQuery}
+              activeTab={activeTab}
+            />
+          </div>
+          
+          <MenuFooter />
+          {tableId && (
+            <WaiterCallButton 
+              tableId={tableId} 
+              restaurantId={restaurantToDisplay.id} 
+            />
+          )}
 
-      <CategoryNavigationDialog
-        categories={restaurantToDisplay.categories}
-        openCategories={openCategories}
-        toggleCategory={toggleCategory}
-      />
-      
-      {/* Cart, OrderHistory, and Toaster are rendered outside the main component */}
-      <Cart tableId={tableId || undefined} />
-      <OrderHistory tableId={tableId || undefined} />
-      <Toaster />
-    </div>
+          <CategoryNavigationDialog
+            categories={restaurantToDisplay.categories}
+            openCategories={openCategories}
+            toggleCategory={toggleCategory}
+          />
+        </div>
+        <Cart tableId={tableId || undefined} />
+        <OrderHistory tableId={tableId || undefined} />
+        <Toaster />
+      </OrderProvider>
+    </CartProvider>
   );
 };
 
